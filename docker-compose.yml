@@ -1,0 +1,49 @@
+# Pile complète exécutable d'une seule commande : `docker compose up --build`.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: wallet
+      POSTGRES_PASSWORD: wallet
+      POSTGRES_DB: wallet
+    # Port hôte décalé (5433) pour ne jamais entrer en conflit avec un PostgreSQL
+    # déjà installé localement sur le port standard 5432.
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # L'API ne doit pas démarrer tant que la base ne répond pas, sinon les
+    # migrations échouent au boot.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wallet -d wallet"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    # Idem : port hôte décalé (6380) pour éviter un Redis local sur 6379.
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg://wallet:wallet@db:5432/wallet
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: dev-secret-change-me
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:

@@ -1,0 +1,30 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Environnements virtuels
+.venv/
+venv/
+
+# Secrets : jamais committés — voir .env.example pour le gabarit
+.env
+
+# Bases locales / artefacts
+*.db
+*.sqlite3
+instance/
+
+# Tests / couverture
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Outils
+.mypy_cache/
+.ruff_cache/
+.idea/
+.vscode/
+.DS_Store

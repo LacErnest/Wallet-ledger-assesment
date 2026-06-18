@@ -1,0 +1,31 @@
+[project]
+name = "wallet-ledger"
+version = "0.1.0"
+description = "Moteur de grand livre en partie double pour portefeuille multi-devises"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "flask==3.1.0",
+    "flask-sqlalchemy==3.1.1",
+    "flask-migrate==4.0.7",
+    "sqlalchemy==2.0.36",
+    "alembic==1.14.0",
+    "psycopg[binary]==3.2.3",
+    "redis==5.2.1",
+    "marshmallow==3.23.2",
+    "requests==2.32.3",
+    "python-dotenv==1.0.1",
+    "gunicorn==23.0.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest==8.3.4",
+    "pytest-cov==6.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+
+[tool.setuptools.packages.find]
+include = ["wallet_ledger*"]

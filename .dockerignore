@@ -1,0 +1,16 @@
+.git
+.venv
+venv
+__pycache__
+*.pyc
+.pytest_cache
+.coverage
+htmlcov
+.env
+*.db
+*.sqlite3
+.idea
+.vscode
+.DS_Store
+docs
+tests
