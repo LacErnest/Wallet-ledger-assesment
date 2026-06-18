@@ -31,9 +31,13 @@ class ReversalService:
         # On n'annule que des opérations RÉUSSIES. Une réservation se libère via /fail ;
         # annuler une annulation n'aurait pas de sens.
         if txn.status != TransactionStatus.SUCCESS:
-            raise InvalidTransactionStateError(txn.status, "annulation d'une transaction non SUCCESS")
+            raise InvalidTransactionStateError(
+                txn.status, "annulation d'une transaction non SUCCESS"
+            )
         if txn.type == TransactionType.REVERSAL:
-            raise InvalidTransactionStateError(txn.status, "annulation d'une transaction d'annulation")
+            raise InvalidTransactionStateError(
+                txn.status, "annulation d'une transaction d'annulation"
+            )
 
         original_entries = LedgerEntry.query.filter_by(
             transaction_id=txn.id, status=EntryStatus.SUCCESS
@@ -45,8 +49,10 @@ class ReversalService:
             self.accounts.lock(account_id)
 
         reversal = Transaction(
-            type=TransactionType.REVERSAL, status=TransactionStatus.SUCCESS,
-            amount=txn.amount, currency=txn.currency,
+            type=TransactionType.REVERSAL,
+            status=TransactionStatus.SUCCESS,
+            amount=txn.amount,
+            currency=txn.currency,
             correlation_id=correlation_id or str(uuid.uuid4()),
             details={"reverses": txn.id},
         )
@@ -58,9 +64,13 @@ class ReversalService:
         mirrors = []
         for entry in original_entries:
             if entry.entry_type == EntryType.DEBIT:
-                mirrors.append(LedgerEntry.credit(entry.account_id, reversal.id, entry.amount, entry.currency))
+                mirrors.append(
+                    LedgerEntry.credit(entry.account_id, reversal.id, entry.amount, entry.currency)
+                )
             else:
-                mirrors.append(LedgerEntry.debit(entry.account_id, reversal.id, entry.amount, entry.currency))
+                mirrors.append(
+                    LedgerEntry.debit(entry.account_id, reversal.id, entry.amount, entry.currency)
+                )
         self.ledger.post_entries(mirrors)
 
         txn.status = TransactionStatus.REVERSED

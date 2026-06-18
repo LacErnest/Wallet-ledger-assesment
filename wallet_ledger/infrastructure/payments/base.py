@@ -41,7 +41,9 @@ class PaymentProvider(ABC):
     name: str
 
     @abstractmethod
-    def create_deposit(self, *, amount: Decimal, currency: str, reference: str, context: dict) -> ProviderCharge:
+    def create_deposit(
+        self, *, amount: Decimal, currency: str, reference: str, context: dict
+    ) -> ProviderCharge:
         """Demande au fournisseur d'encaisser le paiement (la confirmation arrive plus tard, par webhook)."""
 
     @abstractmethod

@@ -90,16 +90,34 @@ def fund(app):
             _db.session.add(clearing)
             _db.session.flush()
 
-        txn = Transaction(type=TransactionType.DEPOSIT, status=TransactionStatus.SUCCESS,
-                          amount=Decimal(amount), currency=account.currency)
+        txn = Transaction(
+            type=TransactionType.DEPOSIT,
+            status=TransactionStatus.SUCCESS,
+            amount=Decimal(amount),
+            currency=account.currency,
+        )
         _db.session.add(txn)
         _db.session.flush()
-        LedgerService().post_entries([
-            LedgerEntry(account_id=clearing.id, transaction_id=txn.id, amount=Decimal(-amount),
-                        entry_type=EntryType.DEBIT, status=EntryStatus.SUCCESS, currency=account.currency),
-            LedgerEntry(account_id=account.id, transaction_id=txn.id, amount=Decimal(amount),
-                        entry_type=EntryType.CREDIT, status=EntryStatus.SUCCESS, currency=account.currency),
-        ])
+        LedgerService().post_entries(
+            [
+                LedgerEntry(
+                    account_id=clearing.id,
+                    transaction_id=txn.id,
+                    amount=Decimal(-amount),
+                    entry_type=EntryType.DEBIT,
+                    status=EntryStatus.SUCCESS,
+                    currency=account.currency,
+                ),
+                LedgerEntry(
+                    account_id=account.id,
+                    transaction_id=txn.id,
+                    amount=Decimal(amount),
+                    entry_type=EntryType.CREDIT,
+                    status=EntryStatus.SUCCESS,
+                    currency=account.currency,
+                ),
+            ]
+        )
         _db.session.commit()
 
     return _fund

@@ -31,18 +31,14 @@ class DuplicateAccountError(DomainError):
     code = "DUPLICATE_ACCOUNT"
 
     def __init__(self, owner_id: str, currency: str):
-        super().__init__(
-            f"Un compte existe déjà pour {owner_id} en {currency}"
-        )
+        super().__init__(f"Un compte existe déjà pour {owner_id} en {currency}")
 
 
 class InsufficientFundsError(DomainError):
     code = "INSUFFICIENT_FUNDS"
 
     def __init__(self, available: str, requested: str):
-        super().__init__(
-            f"Fonds insuffisants : disponible={available}, demandé={requested}"
-        )
+        super().__init__(f"Fonds insuffisants : disponible={available}, demandé={requested}")
 
 
 class InvalidAmountError(DomainError):
@@ -86,9 +82,7 @@ class InvalidTransactionStateError(DomainError):
     code = "INVALID_TRANSACTION_STATE"
 
     def __init__(self, current: str, attempted: str):
-        super().__init__(
-            f"Transition d'état interdite : {current} -> {attempted}"
-        )
+        super().__init__(f"Transition d'état interdite : {current} -> {attempted}")
 
 
 class LedgerNotBalancedError(DomainError):
@@ -97,9 +91,7 @@ class LedgerNotBalancedError(DomainError):
     code = "LEDGER_NOT_BALANCED"
 
     def __init__(self, currency: str, total: str):
-        super().__init__(
-            f"Écritures non équilibrées en {currency} : somme={total} (attendu 0)"
-        )
+        super().__init__(f"Écritures non équilibrées en {currency} : somme={total} (attendu 0)")
 
 
 class DepositAmountMismatchError(DomainError):

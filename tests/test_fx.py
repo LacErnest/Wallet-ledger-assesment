@@ -11,7 +11,6 @@ from wallet_ledger.application.fx import FxService
 from wallet_ledger.application.ledger import LedgerService
 from wallet_ledger.domain.errors import InsufficientFundsError, SameCurrencyError
 from wallet_ledger.domain.money import Money
-from wallet_ledger.models.account import Account
 from wallet_ledger.models.ledger_entry import LedgerEntry
 
 

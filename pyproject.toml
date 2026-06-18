@@ -21,11 +21,26 @@ dependencies = [
 dev = [
     "pytest==8.3.4",
     "pytest-cov==6.0.0",
+    "ruff==0.8.4",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP", "B"]
+ignore = [
+    # B008 : appel dans une valeur par défaut (ex. Decimal("...")), intentionnel et lisible.
+    "B008",
+    # E501 : la longueur de ligne du code est gérée par `ruff format` ; on ne veut pas
+    # casser artificiellement des docstrings/commentaires métier en français.
+    "E501",
+]
 
 [tool.setuptools.packages.find]
 include = ["wallet_ledger*"]

@@ -1,0 +1,17 @@
+# Garde-fou avant chaque commit : on n'envoie jamais du code non formaté ou
+# avec des erreurs de style. Installer une fois avec `uv run pre-commit install`.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff            # lint (corrige ce qui peut l'être)
+        args: [--fix]
+      - id: ruff-format     # formatage
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files

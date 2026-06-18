@@ -57,5 +57,7 @@ class FxRateProvider:
             response.raise_for_status()
             return {code: Decimal(str(value)) for code, value in response.json()["rates"].items()}
         except Exception:  # noqa: BLE001 — une API de taux indisponible ne doit pas bloquer le service
-            logger.warning("API de taux indisponible, repli sur les taux de référence", exc_info=True)
+            logger.warning(
+                "API de taux indisponible, repli sur les taux de référence", exc_info=True
+            )
             return _REFERENCE_PER_EUR

@@ -9,9 +9,9 @@ dépend pas des canaux de communication.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Callable
+from datetime import UTC, datetime
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,7 @@ class DomainEvent:
     event_type: str
     payload: dict
     correlation_id: str | None = None
-    occurred_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    occurred_at: datetime = field(default_factory=lambda: datetime.now(UTC))
 
 
 class EventBus:

@@ -12,10 +12,10 @@ import logging
 from wallet_ledger.application.accounts import AccountService
 from wallet_ledger.domain.events import (
     DEPOSIT_COMPLETED,
-    DomainEvent,
-    EventBus,
     TRANSFER_COMPLETED,
     TRANSFER_FAILED,
+    DomainEvent,
+    EventBus,
 )
 from wallet_ledger.extensions import db
 from wallet_ledger.infrastructure.notifications import NotificationChannel
@@ -41,7 +41,9 @@ class NotificationService:
         self._notify(payload["sender_id"], message, event)
 
     def on_transfer_failed(self, event: DomainEvent) -> None:
-        self._notify_transaction_party(event, "Votre transfert a échoué ; les fonds réservés ont été libérés.")
+        self._notify_transaction_party(
+            event, "Votre transfert a échoué ; les fonds réservés ont été libérés."
+        )
 
     def on_deposit_completed(self, event: DomainEvent) -> None:
         payload = event.payload
@@ -59,11 +61,16 @@ class NotificationService:
         recipient = self._recipient_for(account_id)
         for channel in self._channels:
             sent = channel.send(recipient, message)
-            db.session.add(Notification(
-                channel=channel.name, recipient=recipient, message=message,
-                event_type=event.event_type, status="SENT" if sent else "FAILED",
-                correlation_id=event.correlation_id,
-            ))
+            db.session.add(
+                Notification(
+                    channel=channel.name,
+                    recipient=recipient,
+                    message=message,
+                    event_type=event.event_type,
+                    status="SENT" if sent else "FAILED",
+                    correlation_id=event.correlation_id,
+                )
+            )
         db.session.commit()
 
     def _recipient_for(self, account_id: str) -> str:

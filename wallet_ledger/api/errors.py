@@ -37,8 +37,9 @@ def register_error_handlers(app: Flask) -> None:
     @app.errorhandler(ValidationError)
     def _handle_validation_error(error: ValidationError):
         # Requête mal formée rejetée à la frontière, avant d'atteindre le domaine.
-        return jsonify({"error": "Requête invalide", "code": "VALIDATION_ERROR",
-                        "details": error.messages}), 400
+        return jsonify(
+            {"error": "Requête invalide", "code": "VALIDATION_ERROR", "details": error.messages}
+        ), 400
 
     @app.errorhandler(404)
     def _handle_not_found(_error):

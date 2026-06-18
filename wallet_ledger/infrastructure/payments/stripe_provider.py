@@ -31,7 +31,9 @@ class StripeProvider(PaymentProvider):
         self._api_key = api_key
         self._webhook_secret = webhook_secret
 
-    def create_deposit(self, *, amount: Decimal, currency: str, reference: str, context: dict) -> ProviderCharge:
+    def create_deposit(
+        self, *, amount: Decimal, currency: str, reference: str, context: dict
+    ) -> ProviderCharge:
         # Sans clé API, on reste en mode hors-ligne simulé : le système doit pouvoir
         # tourner et être testé sans secrets réels.
         if not self._api_key:

@@ -20,7 +20,8 @@ from wallet_ledger.domain.errors import (
     InvalidTransactionStateError,
     TransactionNotFoundError,
 )
-from wallet_ledger.domain.events import DEPOSIT_COMPLETED, DomainEvent, event_bus as default_event_bus
+from wallet_ledger.domain.events import DEPOSIT_COMPLETED, DomainEvent
+from wallet_ledger.domain.events import event_bus as default_event_bus
 from wallet_ledger.domain.money import Money
 from wallet_ledger.extensions import db
 from wallet_ledger.infrastructure.payments import get_payment_provider
@@ -32,14 +33,24 @@ _CLEARING_OWNER = "PLATFORM_CLEARING"
 
 
 class DepositService:
-    def __init__(self, ledger: LedgerService | None = None,
-                 accounts: AccountService | None = None, events=default_event_bus):
+    def __init__(
+        self,
+        ledger: LedgerService | None = None,
+        accounts: AccountService | None = None,
+        events=default_event_bus,
+    ):
         self.ledger = ledger or LedgerService()
         self.accounts = accounts or AccountService()
         self.events = events
 
-    def initiate(self, account_id: str, amount: Decimal, provider_name: str,
-                 context: dict | None = None, correlation_id: str | None = None) -> Transaction:
+    def initiate(
+        self,
+        account_id: str,
+        amount: Decimal,
+        provider_name: str,
+        context: dict | None = None,
+        correlation_id: str | None = None,
+    ) -> Transaction:
         """Crée un dépôt PENDING et demande au fournisseur d'encaisser."""
         account = self.accounts.get(account_id)
         money = Money(amount, account.currency)
@@ -68,8 +79,12 @@ class DepositService:
         db.session.commit()
         return txn
 
-    def settle(self, reference: str, confirmed_amount: Decimal | None,
-               confirmed_currency: str | None = None) -> Transaction:
+    def settle(
+        self,
+        reference: str,
+        confirmed_amount: Decimal | None,
+        confirmed_currency: str | None = None,
+    ) -> Transaction:
         """Confirme un dépôt (appelé après vérification de la signature du webhook)."""
         # Verrou de ligne sur la transaction : les fournisseurs rejouent leurs webhooks,
         # parfois en parallèle. Sans ce verrou, deux confirmations simultanées
@@ -88,30 +103,36 @@ class DepositService:
             raise DepositAmountMismatchError(
                 f"{authorized.amount} {txn.currency}", f"{confirmed_amount} {confirmed_currency}"
             )
-        confirmed = authorized if confirmed_amount is None else Money(confirmed_amount, txn.currency)
+        confirmed = (
+            authorized if confirmed_amount is None else Money(confirmed_amount, txn.currency)
+        )
         if confirmed != authorized:
             raise DepositAmountMismatchError(str(authorized.amount), str(confirmed.amount))
 
         account = self.accounts.lock(txn.details["account_id"])
         clearing = self.accounts.get_or_create_internal(_CLEARING_OWNER, account.currency)
 
-        self.ledger.post_entries([
-            LedgerEntry.debit(clearing.id, txn.id, authorized.amount, authorized.currency),
-            LedgerEntry.credit(account.id, txn.id, authorized.amount, authorized.currency),
-        ])
+        self.ledger.post_entries(
+            [
+                LedgerEntry.debit(clearing.id, txn.id, authorized.amount, authorized.currency),
+                LedgerEntry.credit(account.id, txn.id, authorized.amount, authorized.currency),
+            ]
+        )
         txn.status = TransactionStatus.SUCCESS
         self.ledger.maybe_snapshot(account)
         self.ledger.maybe_snapshot(clearing)
         db.session.commit()
 
-        self.events.publish(DomainEvent(
-            DEPOSIT_COMPLETED,
-            {
-                "transaction_id": txn.id,
-                "account_id": account.id,
-                "amount": str(authorized.amount),
-                "currency": authorized.currency,
-            },
-            correlation_id=txn.correlation_id,
-        ))
+        self.events.publish(
+            DomainEvent(
+                DEPOSIT_COMPLETED,
+                {
+                    "transaction_id": txn.id,
+                    "account_id": account.id,
+                    "amount": str(authorized.amount),
+                    "currency": authorized.currency,
+                },
+                correlation_id=txn.correlation_id,
+            )
+        )
         return txn

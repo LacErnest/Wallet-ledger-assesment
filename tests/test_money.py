@@ -38,7 +38,7 @@ class TestMoney:
         with pytest.raises(CurrencyMismatchError):
             Money("10", "USD") + Money("5", "EUR")
         with pytest.raises(CurrencyMismatchError):
-            Money("10", "USD") < Money("5", "EUR")
+            assert Money("10", "USD") < Money("5", "EUR")
 
     def test_comparisons(self):
         assert Money("10", "USD") > Money("5", "USD")
@@ -50,8 +50,9 @@ class TestMoney:
         assert Money("0", "USD").is_zero()
 
     def test_is_immutable(self):
+        # Un dataclass figé lève FrozenInstanceError (sous-classe d'AttributeError).
         money = Money("10", "USD")
-        with pytest.raises(Exception):
+        with pytest.raises(AttributeError):
             money.amount = Decimal("20")
 
     def test_is_hashable(self):

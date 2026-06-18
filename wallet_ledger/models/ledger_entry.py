@@ -49,16 +49,40 @@ class LedgerEntry(db.Model):
     # crédit positif. Les services demandent un montant (toujours positif) et le sens
     # comptable découle de la méthode appelée — impossible de se tromper de signe.
     @classmethod
-    def debit(cls, account_id: str, transaction_id: str, amount, currency: str,
-              status: EntryStatus = EntryStatus.SUCCESS) -> "LedgerEntry":
-        return cls(account_id=account_id, transaction_id=transaction_id, amount=-abs(amount),
-                   entry_type=EntryType.DEBIT, status=status, currency=currency)
+    def debit(
+        cls,
+        account_id: str,
+        transaction_id: str,
+        amount,
+        currency: str,
+        status: EntryStatus = EntryStatus.SUCCESS,
+    ) -> LedgerEntry:
+        return cls(
+            account_id=account_id,
+            transaction_id=transaction_id,
+            amount=-abs(amount),
+            entry_type=EntryType.DEBIT,
+            status=status,
+            currency=currency,
+        )
 
     @classmethod
-    def credit(cls, account_id: str, transaction_id: str, amount, currency: str,
-               status: EntryStatus = EntryStatus.SUCCESS) -> "LedgerEntry":
-        return cls(account_id=account_id, transaction_id=transaction_id, amount=abs(amount),
-                   entry_type=EntryType.CREDIT, status=status, currency=currency)
+    def credit(
+        cls,
+        account_id: str,
+        transaction_id: str,
+        amount,
+        currency: str,
+        status: EntryStatus = EntryStatus.SUCCESS,
+    ) -> LedgerEntry:
+        return cls(
+            account_id=account_id,
+            transaction_id=transaction_id,
+            amount=abs(amount),
+            entry_type=EntryType.CREDIT,
+            status=status,
+            currency=currency,
+        )
 
     def __repr__(self) -> str:
         return f"<LedgerEntry {self.account_id} {self.amount} {self.entry_type}/{self.status}>"

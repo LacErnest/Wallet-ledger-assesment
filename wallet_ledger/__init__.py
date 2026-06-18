@@ -69,8 +69,15 @@ def _init_redis(app: Flask) -> None:
 
 
 def _register_blueprints(app: Flask) -> None:
-    for blueprint in (accounts_bp, transfers_bp, transactions_bp, deposits_bp,
-                      webhooks_bp, fx_bp, docs_bp):
+    for blueprint in (
+        accounts_bp,
+        transfers_bp,
+        transactions_bp,
+        deposits_bp,
+        webhooks_bp,
+        fx_bp,
+        docs_bp,
+    ):
         app.register_blueprint(blueprint, url_prefix=API_PREFIX)
 
 
@@ -81,10 +88,12 @@ def _register_cross_cutting(app: Flask) -> None:
 
 def _wire_event_subscribers(app: Flask) -> None:
     """Branche les réactions aux événements : notifier le client et purger le cache de solde."""
-    NotificationService([
-        EmailChannel(app.config["EMAIL_FROM"]),
-        SmsChannel(app.config["SMS_FROM"]),
-    ]).register(event_bus)
+    NotificationService(
+        [
+            EmailChannel(app.config["EMAIL_FROM"]),
+            SmsChannel(app.config["SMS_FROM"]),
+        ]
+    ).register(event_bus)
 
     # Dès qu'un mouvement touche un compte, on purge son solde en cache pour ne jamais
     # servir une valeur périmée.

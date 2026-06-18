@@ -3,7 +3,6 @@ traçabilité, vérification de webhook) via le client de test Flask.
 """
 
 import json
-from decimal import Decimal
 
 from wallet_ledger.application.accounts import AccountService
 from wallet_ledger.infrastructure.payments.base import hmac_sha256_hex
@@ -36,18 +35,29 @@ class TestAccountsApi:
 
 class TestDepositWebhookApi:
     def _pawapay_webhook(self, client, deposit_id, amount, currency, secret="pawapay_whsec_test"):
-        body = json.dumps({"depositId": deposit_id, "status": "COMPLETED",
-                           "amount": amount, "currency": currency})
+        body = json.dumps(
+            {"depositId": deposit_id, "status": "COMPLETED", "amount": amount, "currency": currency}
+        )
         signature = hmac_sha256_hex(secret, body.encode())
-        return client.post(f"{API}/payments/webhook/pawapay", data=body,
-                           content_type="application/json", headers={"X-Signature": signature})
+        return client.post(
+            f"{API}/payments/webhook/pawapay",
+            data=body,
+            content_type="application/json",
+            headers={"X-Signature": signature},
+        )
 
     def test_deposit_then_webhook_credits_balance(self, client):
         number = _create_account(client, "kamga", "XAF")
-        deposit = client.post(f"{API}/deposits", json={
-            "account_number": number, "amount": "5000", "provider": "pawapay",
-            "operator": "mtn", "phone_number": "237650000000",
-        })
+        deposit = client.post(
+            f"{API}/deposits",
+            json={
+                "account_number": number,
+                "amount": "5000",
+                "provider": "pawapay",
+                "operator": "mtn",
+                "phone_number": "237650000000",
+            },
+        )
         assert deposit.status_code == 201
         deposit_id = deposit.get_json()["transaction_id"]  # PawaPay : depositId == notre id
 
@@ -58,10 +68,16 @@ class TestDepositWebhookApi:
 
     def test_webhook_with_invalid_signature_is_rejected(self, client):
         number = _create_account(client, "kamga", "XAF")
-        deposit = client.post(f"{API}/deposits", json={
-            "account_number": number, "amount": "5000", "provider": "pawapay",
-            "operator": "mtn", "phone_number": "237650000000",
-        })
+        deposit = client.post(
+            f"{API}/deposits",
+            json={
+                "account_number": number,
+                "amount": "5000",
+                "provider": "pawapay",
+                "operator": "mtn",
+                "phone_number": "237650000000",
+            },
+        )
         deposit_id = deposit.get_json()["transaction_id"]
         # Mauvais secret => signature invalide => refus, aucun crédit.
         resp = self._pawapay_webhook(client, deposit_id, "5000", "XAF", secret="WRONG")
@@ -75,13 +91,19 @@ class TestTransfersApi:
         bob_number = _create_account(client, "bob", "USD")
         fund(AccountService().get_by_number(alice_number), 200)
 
-        resp = client.post(f"{API}/transfers", json={
-            "sender_account_number": alice_number,
-            "receiver_account_number": bob_number, "amount": "30",
-        })
+        resp = client.post(
+            f"{API}/transfers",
+            json={
+                "sender_account_number": alice_number,
+                "receiver_account_number": bob_number,
+                "amount": "30",
+            },
+        )
         assert resp.status_code == 201
         # Les soldes sont sérialisés à la précision de la devise (USD = 2 décimales).
-        assert client.get(f"{API}/accounts/{alice_number}/balance").get_json()["balance"] == "170.00"
+        assert (
+            client.get(f"{API}/accounts/{alice_number}/balance").get_json()["balance"] == "170.00"
+        )
         assert client.get(f"{API}/accounts/{bob_number}/balance").get_json()["balance"] == "30.00"
 
     def test_idempotency_key_prevents_double_spend(self, client, fund):
@@ -90,8 +112,11 @@ class TestTransfersApi:
         fund(AccountService().get_by_number(alice_number), 200)
 
         headers = {"Idempotency-Key": "transfer-key-1"}
-        payload = {"sender_account_number": alice_number,
-                   "receiver_account_number": bob_number, "amount": "50"}
+        payload = {
+            "sender_account_number": alice_number,
+            "receiver_account_number": bob_number,
+            "amount": "50",
+        }
 
         first = client.post(f"{API}/transfers", json=payload, headers=headers)
         second = client.post(f"{API}/transfers", json=payload, headers=headers)
@@ -100,29 +125,41 @@ class TestTransfersApi:
         assert second.status_code == 201
         # Réponse rejouée à l'identique, et un SEUL débit appliqué.
         assert first.get_json()["transaction_id"] == second.get_json()["transaction_id"]
-        assert client.get(f"{API}/accounts/{alice_number}/balance").get_json()["balance"] == "150.00"
+        assert (
+            client.get(f"{API}/accounts/{alice_number}/balance").get_json()["balance"] == "150.00"
+        )
 
     def test_reverse_transaction_restores_balance(self, client, fund):
         alice_number = _create_account(client, "alice", "USD")
         bob_number = _create_account(client, "bob", "USD")
         fund(AccountService().get_by_number(alice_number), 200)
-        txn = client.post(f"{API}/transfers", json={
-            "sender_account_number": alice_number,
-            "receiver_account_number": bob_number, "amount": "30",
-        }).get_json()
+        txn = client.post(
+            f"{API}/transfers",
+            json={
+                "sender_account_number": alice_number,
+                "receiver_account_number": bob_number,
+                "amount": "30",
+            },
+        ).get_json()
 
         reversal = client.post(f"{API}/transactions/{txn['transaction_id']}/reverse")
         assert reversal.status_code == 201
         assert reversal.get_json()["type"] == "REVERSAL"
-        assert client.get(f"{API}/accounts/{alice_number}/balance").get_json()["balance"] == "200.00"
+        assert (
+            client.get(f"{API}/accounts/{alice_number}/balance").get_json()["balance"] == "200.00"
+        )
 
     def test_insufficient_funds_returns_422(self, client, fund):
         alice_number = _create_account(client, "alice", "USD")
         bob_number = _create_account(client, "bob", "USD")
-        resp = client.post(f"{API}/transfers", json={
-            "sender_account_number": alice_number,
-            "receiver_account_number": bob_number, "amount": "50",
-        })
+        resp = client.post(
+            f"{API}/transfers",
+            json={
+                "sender_account_number": alice_number,
+                "receiver_account_number": bob_number,
+                "amount": "50",
+            },
+        )
         assert resp.status_code == 422
         assert resp.get_json()["code"] == "INSUFFICIENT_FUNDS"
 
@@ -156,12 +193,18 @@ class TestCrossCuttingApi:
         bob_number = _create_account(client, "bob", "USD")
         fund(AccountService().get_by_number(alice_number), 500)
         for _ in range(3):
-            client.post(f"{API}/transfers", json={
-                "sender_account_number": alice_number,
-                "receiver_account_number": bob_number, "amount": "10",
-            })
+            client.post(
+                f"{API}/transfers",
+                json={
+                    "sender_account_number": alice_number,
+                    "receiver_account_number": bob_number,
+                    "amount": "10",
+                },
+            )
 
-        page = client.get(f"{API}/accounts/{alice_number}/transactions?page=1&per_page=2").get_json()
+        page = client.get(
+            f"{API}/accounts/{alice_number}/transactions?page=1&per_page=2"
+        ).get_json()
         assert page["per_page"] == 2
         # 1 dépôt de financement + 3 transferts = 4 transactions touchant Alice.
         assert page["total"] == 4

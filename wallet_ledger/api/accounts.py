@@ -5,7 +5,11 @@ from __future__ import annotations
 from flask import Blueprint, current_app, request
 
 from wallet_ledger.api.schemas import CreateAccountSchema
-from wallet_ledger.api.serializers import serialize_account, serialize_balance, serialize_transaction
+from wallet_ledger.api.serializers import (
+    serialize_account,
+    serialize_balance,
+    serialize_transaction,
+)
 from wallet_ledger.application.accounts import AccountService
 from wallet_ledger.application.balance_query import BalanceQuery
 from wallet_ledger.application.ledger import LedgerService
@@ -19,7 +23,9 @@ _accounts = AccountService()
 
 
 def _balance_query() -> BalanceQuery:
-    cache = BalanceCache(current_app.extensions.get("redis"), current_app.config["BALANCE_CACHE_TTL_SECONDS"])
+    cache = BalanceCache(
+        current_app.extensions.get("redis"), current_app.config["BALANCE_CACHE_TTL_SECONDS"]
+    )
     return BalanceQuery(LedgerService(), cache)
 
 

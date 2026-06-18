@@ -39,7 +39,9 @@ class PawaPayProvider(PaymentProvider):
         self._api_token = api_token
         self._webhook_secret = webhook_secret
 
-    def create_deposit(self, *, amount: Decimal, currency: str, reference: str, context: dict) -> ProviderCharge:
+    def create_deposit(
+        self, *, amount: Decimal, currency: str, reference: str, context: dict
+    ) -> ProviderCharge:
         operator = str(context.get("operator", "")).lower()
         correspondent = _CORRESPONDENTS.get((operator, currency.upper()))
         if correspondent is None:

@@ -29,14 +29,20 @@ def _fund(account: Account, amount: Decimal) -> None:
     """Crédite un compte depuis le compte de compensation (écritures équilibrées)."""
     accounts = AccountService()
     clearing = accounts.get_or_create_internal(_CLEARING_OWNER, account.currency)
-    txn = Transaction(type=TransactionType.DEPOSIT, status=TransactionStatus.SUCCESS,
-                      amount=amount, currency=account.currency)
+    txn = Transaction(
+        type=TransactionType.DEPOSIT,
+        status=TransactionStatus.SUCCESS,
+        amount=amount,
+        currency=account.currency,
+    )
     db.session.add(txn)
     db.session.flush()
-    LedgerService().post_entries([
-        LedgerEntry.debit(clearing.id, txn.id, amount, account.currency),
-        LedgerEntry.credit(account.id, txn.id, amount, account.currency),
-    ])
+    LedgerService().post_entries(
+        [
+            LedgerEntry.debit(clearing.id, txn.id, amount, account.currency),
+            LedgerEntry.credit(account.id, txn.id, amount, account.currency),
+        ]
+    )
     db.session.commit()
 
 

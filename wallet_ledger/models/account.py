@@ -34,7 +34,9 @@ class Account(db.Model):
 
     # Un seul compte par (propriétaire, devise) : empêche les doublons de comptes
     # internes (pool de change, compte de compensation) sous forte concurrence.
-    __table_args__ = (db.UniqueConstraint("owner_id", "currency", name="uq_account_owner_currency"),)
+    __table_args__ = (
+        db.UniqueConstraint("owner_id", "currency", name="uq_account_owner_currency"),
+    )
 
     def __repr__(self) -> str:
         return f"<Account {self.number} {self.owner_id} {self.currency}>"

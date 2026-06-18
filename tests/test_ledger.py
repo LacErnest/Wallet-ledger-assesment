@@ -25,10 +25,22 @@ def _credit_debit(account_id, clearing_id, amount, currency="USD", status=EntryS
     db.session.add(txn)
     db.session.flush()
     return txn, [
-        LedgerEntry(account_id=clearing_id, transaction_id=txn.id, amount=Decimal(-amount),
-                    entry_type=EntryType.DEBIT, status=status, currency=currency),
-        LedgerEntry(account_id=account_id, transaction_id=txn.id, amount=Decimal(amount),
-                    entry_type=EntryType.CREDIT, status=status, currency=currency),
+        LedgerEntry(
+            account_id=clearing_id,
+            transaction_id=txn.id,
+            amount=Decimal(-amount),
+            entry_type=EntryType.DEBIT,
+            status=status,
+            currency=currency,
+        ),
+        LedgerEntry(
+            account_id=account_id,
+            transaction_id=txn.id,
+            amount=Decimal(amount),
+            entry_type=EntryType.CREDIT,
+            status=status,
+            currency=currency,
+        ),
     ]
 
 
@@ -49,16 +61,32 @@ class TestLedger:
     def test_post_entries_rejects_unbalanced_set(self, alice, make_account):
         clearing = make_account("clearing", "USD")
         ledger = LedgerService()
-        txn = Transaction(type=TransactionType.DEPOSIT, status=TransactionStatus.SUCCESS,
-                          amount=Decimal(100), currency="USD")
+        txn = Transaction(
+            type=TransactionType.DEPOSIT,
+            status=TransactionStatus.SUCCESS,
+            amount=Decimal(100),
+            currency="USD",
+        )
         db.session.add(txn)
         db.session.flush()
 
         unbalanced = [
-            LedgerEntry(account_id=alice.id, transaction_id=txn.id, amount=Decimal(100),
-                        entry_type=EntryType.CREDIT, status=EntryStatus.SUCCESS, currency="USD"),
-            LedgerEntry(account_id=clearing.id, transaction_id=txn.id, amount=Decimal(-90),
-                        entry_type=EntryType.DEBIT, status=EntryStatus.SUCCESS, currency="USD"),
+            LedgerEntry(
+                account_id=alice.id,
+                transaction_id=txn.id,
+                amount=Decimal(100),
+                entry_type=EntryType.CREDIT,
+                status=EntryStatus.SUCCESS,
+                currency="USD",
+            ),
+            LedgerEntry(
+                account_id=clearing.id,
+                transaction_id=txn.id,
+                amount=Decimal(-90),
+                entry_type=EntryType.DEBIT,
+                status=EntryStatus.SUCCESS,
+                currency="USD",
+            ),
         ]
         with pytest.raises(LedgerNotBalancedError):
             ledger.post_entries(unbalanced)
@@ -71,17 +99,27 @@ class TestLedger:
         db.session.flush()
 
         # Réservation : un débit PENDING de 30 sur Alice (contrepartie en attente aussi).
-        reserve_txn = Transaction(type=TransactionType.TRANSFER, status=TransactionStatus.PENDING,
-                                  amount=Decimal(30), currency="USD")
+        reserve_txn = Transaction(
+            type=TransactionType.TRANSFER,
+            status=TransactionStatus.PENDING,
+            amount=Decimal(30),
+            currency="USD",
+        )
         db.session.add(reserve_txn)
         db.session.flush()
         db.session.add(
-            LedgerEntry(account_id=alice.id, transaction_id=reserve_txn.id, amount=Decimal(-30),
-                        entry_type=EntryType.DEBIT, status=EntryStatus.PENDING, currency="USD")
+            LedgerEntry(
+                account_id=alice.id,
+                transaction_id=reserve_txn.id,
+                amount=Decimal(-30),
+                entry_type=EntryType.DEBIT,
+                status=EntryStatus.PENDING,
+                currency="USD",
+            )
         )
         db.session.commit()
 
-        assert ledger.balance(alice) == Money("100", "USD")        # soldé inchangé
+        assert ledger.balance(alice) == Money("100", "USD")  # soldé inchangé
         assert ledger.available_balance(alice) == Money("70", "USD")  # disponible réduit
 
     def test_snapshot_matches_full_recomputation(self, alice, make_account, app):

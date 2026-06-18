@@ -5,7 +5,7 @@ FLASK := uv run flask --app wallet_ledger
 COMPOSE := docker compose
 
 .DEFAULT_GOAL := help
-.PHONY: help install up down logs dev migrate migration seed test test-down shell clean
+.PHONY: help install up down logs dev migrate migration seed test test-down lint fmt shell clean
 
 help: ## Affiche cette aide
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -47,6 +47,14 @@ test: ## Lance les tests sur des conteneurs jetables isolés (db + redis de test
 
 test-down: ## Arrête les conteneurs de test
 	$(COMPOSE) --profile test down
+
+lint: ## Vérifie le style et les erreurs sans rien modifier (ruff)
+	uv run ruff check .
+	uv run ruff format --check .
+
+fmt: ## Corrige et formate le code automatiquement (ruff)
+	uv run ruff check --fix .
+	uv run ruff format .
 
 shell: ## Ouvre un shell Flask (contexte applicatif)
 	$(FLASK) shell

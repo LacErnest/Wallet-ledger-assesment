@@ -23,10 +23,12 @@ from wallet_ledger.domain.errors import (
     TransactionNotFoundError,
 )
 from wallet_ledger.domain.events import (
-    DomainEvent,
     FUNDS_RESERVED,
     TRANSFER_COMPLETED,
     TRANSFER_FAILED,
+    DomainEvent,
+)
+from wallet_ledger.domain.events import (
     event_bus as default_event_bus,
 )
 from wallet_ledger.domain.money import Money
@@ -37,16 +39,22 @@ from wallet_ledger.models.transaction import Transaction
 
 
 class TransferService:
-    def __init__(self, ledger: LedgerService | None = None, risk: RiskService | None = None,
-                 accounts: AccountService | None = None, events=default_event_bus):
+    def __init__(
+        self,
+        ledger: LedgerService | None = None,
+        risk: RiskService | None = None,
+        accounts: AccountService | None = None,
+        events=default_event_bus,
+    ):
         self.ledger = ledger or LedgerService()
         self.risk = risk or RiskService()
         self.accounts = accounts or AccountService()
         self.events = events
 
     # --- Mode direct -----------------------------------------------------------
-    def execute(self, sender_id: str, receiver_id: str, amount: Decimal,
-                correlation_id: str | None = None) -> Transaction:
+    def execute(
+        self, sender_id: str, receiver_id: str, amount: Decimal, correlation_id: str | None = None
+    ) -> Transaction:
         sender = self._lock(sender_id)
         receiver = self._get(receiver_id)
         money = self._validate(sender, receiver, amount)
@@ -54,13 +62,19 @@ class TransferService:
 
         correlation_id = correlation_id or str(uuid.uuid4())
         txn = self._new_transaction(
-            TransactionType.TRANSFER, TransactionStatus.SUCCESS, money,
-            sender, receiver, correlation_id,
+            TransactionType.TRANSFER,
+            TransactionStatus.SUCCESS,
+            money,
+            sender,
+            receiver,
+            correlation_id,
         )
-        self.ledger.post_entries([
-            LedgerEntry.debit(sender.id, txn.id, money.amount, money.currency),
-            LedgerEntry.credit(receiver.id, txn.id, money.amount, money.currency),
-        ])
+        self.ledger.post_entries(
+            [
+                LedgerEntry.debit(sender.id, txn.id, money.amount, money.currency),
+                LedgerEntry.credit(receiver.id, txn.id, money.amount, money.currency),
+            ]
+        )
         self._snapshot(sender, receiver)
         db.session.commit()
 
@@ -68,8 +82,9 @@ class TransferService:
         return txn
 
     # --- Mode deux phases ------------------------------------------------------
-    def initiate(self, sender_id: str, receiver_id: str, amount: Decimal,
-                 correlation_id: str | None = None) -> Transaction:
+    def initiate(
+        self, sender_id: str, receiver_id: str, amount: Decimal, correlation_id: str | None = None
+    ) -> Transaction:
         """Phase 1 : réserve les fonds via un débit PENDING (rien n'est encore réglé)."""
         sender = self._lock(sender_id)
         receiver = self._get(receiver_id)
@@ -78,8 +93,12 @@ class TransferService:
 
         correlation_id = correlation_id or str(uuid.uuid4())
         txn = self._new_transaction(
-            TransactionType.TRANSFER, TransactionStatus.PENDING, money,
-            sender, receiver, correlation_id,
+            TransactionType.TRANSFER,
+            TransactionStatus.PENDING,
+            money,
+            sender,
+            receiver,
+            correlation_id,
         )
         # Réservation = débit PENDING seul. La transaction ne s'équilibrera qu'au
         # règlement, quand le crédit sera créé ; on n'appelle donc pas post_entries ici.
@@ -126,14 +145,18 @@ class TransferService:
     def fail(self, transaction_id: str) -> Transaction:
         """Annule une réservation : les écritures PENDING passent FAILED, les fonds sont libérés."""
         txn = self._pending_transaction(transaction_id)
-        for entry in LedgerEntry.query.filter_by(transaction_id=txn.id, status=EntryStatus.PENDING).all():
+        for entry in LedgerEntry.query.filter_by(
+            transaction_id=txn.id, status=EntryStatus.PENDING
+        ).all():
             entry.status = EntryStatus.FAILED
         txn.status = TransactionStatus.FAILED
         db.session.commit()
 
-        self.events.publish(DomainEvent(
-            TRANSFER_FAILED, {"transaction_id": txn.id}, correlation_id=txn.correlation_id
-        ))
+        self.events.publish(
+            DomainEvent(
+                TRANSFER_FAILED, {"transaction_id": txn.id}, correlation_id=txn.correlation_id
+            )
+        )
         return txn
 
     # --- Aides privées ---------------------------------------------------------
@@ -156,10 +179,14 @@ class TransferService:
         if available < money:
             raise InsufficientFundsError(str(available.amount), str(money.amount))
 
-    def _new_transaction(self, type_, status, money: Money, sender: Account,
-                         receiver: Account, correlation_id: str) -> Transaction:
+    def _new_transaction(
+        self, type_, status, money: Money, sender: Account, receiver: Account, correlation_id: str
+    ) -> Transaction:
         txn = Transaction(
-            type=type_, status=status, amount=money.amount, currency=money.currency,
+            type=type_,
+            status=status,
+            amount=money.amount,
+            currency=money.currency,
             correlation_id=correlation_id,
             details={"sender_id": sender.id, "receiver_id": receiver.id},
         )
@@ -179,16 +206,19 @@ class TransferService:
             raise InvalidTransactionStateError(txn.status, "opération sur transaction non PENDING")
         return txn
 
-    def _publish(self, event_type: str, txn: Transaction, money: Money,
-                 sender: Account, receiver: Account) -> None:
-        self.events.publish(DomainEvent(
-            event_type,
-            {
-                "transaction_id": txn.id,
-                "sender_id": sender.id,
-                "receiver_id": receiver.id,
-                "amount": str(money.amount),
-                "currency": money.currency,
-            },
-            correlation_id=txn.correlation_id,
-        ))
+    def _publish(
+        self, event_type: str, txn: Transaction, money: Money, sender: Account, receiver: Account
+    ) -> None:
+        self.events.publish(
+            DomainEvent(
+                event_type,
+                {
+                    "transaction_id": txn.id,
+                    "sender_id": sender.id,
+                    "receiver_id": receiver.id,
+                    "amount": str(money.amount),
+                    "currency": money.currency,
+                },
+                correlation_id=txn.correlation_id,
+            )
+        )

@@ -50,9 +50,7 @@ class LedgerService:
         base = snapshot.balance if snapshot else Decimal(0)
         cursor = snapshot.last_entry_seq if snapshot else 0
 
-        delta = self._sum(
-            account.id, after_seq=cursor, statuses=(EntryStatus.SUCCESS,)
-        )
+        delta = self._sum(account.id, after_seq=cursor, statuses=(EntryStatus.SUCCESS,))
         return Money(base + delta, account.currency)
 
     def available_balance(self, account: Account) -> Money:

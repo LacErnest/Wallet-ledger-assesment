@@ -34,8 +34,12 @@ class TestDeposits:
     def test_deposit_via_pawapay_mtn_credits_account(self, make_account):
         account = make_account("kamga", "XAF")
         service = DepositService()
-        txn = service.initiate(account.id, Decimal("5000"), "pawapay",
-                               context={"operator": "mtn", "phone_number": "237650000000"})
+        txn = service.initiate(
+            account.id,
+            Decimal("5000"),
+            "pawapay",
+            context={"operator": "mtn", "phone_number": "237650000000"},
+        )
         service.settle(txn.reference, Decimal("5000"))
         assert LedgerService().balance(account) == Money("5000", "XAF")
 
@@ -64,7 +68,9 @@ class TestDeposits:
         """Deux confirmations simultanées du même dépôt : une seule crédite (verrou de ligne)."""
         account = make_account("kamga", "XAF")
         txn = DepositService().initiate(
-            account.id, Decimal("5000"), "pawapay",
+            account.id,
+            Decimal("5000"),
+            "pawapay",
             context={"operator": "mtn", "phone_number": "237650000000"},
         )
         reference, account_number = txn.reference, account.number

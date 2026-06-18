@@ -21,8 +21,9 @@ class AccountService:
             db.session.commit()
         except IntegrityError:
             # La contrainte d'unicité (propriétaire, devise) a parlé : pas de doublon.
+            # `from None` : on remplace l'erreur technique par l'erreur métier, sans bruit.
             db.session.rollback()
-            raise DuplicateAccountError(owner_id, currency)
+            raise DuplicateAccountError(owner_id, currency) from None
         return account
 
     def get(self, account_id: str) -> Account:

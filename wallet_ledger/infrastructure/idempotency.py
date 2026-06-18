@@ -27,7 +27,7 @@ def _request_hash() -> str:
 
 def _serialize(response) -> tuple[str, int]:
     """Normalise le retour d'une vue en (corps JSON, statut) pour pouvoir le rejouer."""
-    body, status = (response if isinstance(response, tuple) else (response, 200))
+    body, status = response if isinstance(response, tuple) else (response, 200)
     if hasattr(body, "get_json"):
         body = body.get_json()
     return json.dumps(body), status
