@@ -7,6 +7,7 @@ C'est ce qui rend le système auditable — chaque centime a une ligne qui l'exp
 from __future__ import annotations
 
 from sqlalchemy import BigInteger, Identity
+from sqlalchemy.dialects.postgresql import JSONB
 
 from wallet_ledger.domain.enums import EntryStatus, EntryType
 from wallet_ledger.extensions import db
@@ -34,6 +35,11 @@ class LedgerEntry(db.Model):
     status = enum_column(EntryStatus, nullable=False, default=EntryStatus.PENDING)
     currency = db.Column(db.String(3), nullable=False)
 
+    # Métadonnées libres de l'écriture (champ « metadata » du modèle Entry de l'énoncé) :
+    # contexte d'audit propre à la ligne. Attribut nommé `entry_metadata` car `metadata`
+    # est réservé par SQLAlchemy ; la colonne SQL s'appelle bien « metadata ».
+    entry_metadata = db.Column("metadata", JSONB, nullable=True)
+
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
 
     transaction = db.relationship("Transaction", back_populates="entries")
@@ -56,6 +62,7 @@ class LedgerEntry(db.Model):
         amount,
         currency: str,
         status: EntryStatus = EntryStatus.SUCCESS,
+        metadata: dict | None = None,
     ) -> LedgerEntry:
         return cls(
             account_id=account_id,
@@ -64,6 +71,7 @@ class LedgerEntry(db.Model):
             entry_type=EntryType.DEBIT,
             status=status,
             currency=currency,
+            entry_metadata=metadata,
         )
 
     @classmethod
@@ -74,6 +82,7 @@ class LedgerEntry(db.Model):
         amount,
         currency: str,
         status: EntryStatus = EntryStatus.SUCCESS,
+        metadata: dict | None = None,
     ) -> LedgerEntry:
         return cls(
             account_id=account_id,
@@ -82,6 +91,7 @@ class LedgerEntry(db.Model):
             entry_type=EntryType.CREDIT,
             status=status,
             currency=currency,
+            entry_metadata=metadata,
         )
 
     def __repr__(self) -> str:

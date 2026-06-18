@@ -31,6 +31,8 @@ addopts = "-ra"
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# Migrations générées par Alembic : code outillé, on ne le soumet pas à nos règles.
+extend-exclude = ["migrations"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W", "UP", "B"]
