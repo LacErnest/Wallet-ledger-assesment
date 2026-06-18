@@ -113,6 +113,20 @@ class TestTransfersApi:
         assert resp.get_json()["code"] == "INSUFFICIENT_FUNDS"
 
 
+class TestApiDocs:
+    def test_openapi_spec_is_served(self, client):
+        spec = client.get(f"{API}/openapi.json").get_json()
+        assert spec["openapi"].startswith("3.")
+        # Tous les endpoints clés sont documentés.
+        assert "/transfers" in spec["paths"]
+        assert "/payments/webhook/{provider}" in spec["paths"]
+
+    def test_swagger_ui_is_served(self, client):
+        resp = client.get(f"{API}/docs")
+        assert resp.status_code == 200
+        assert "swagger-ui" in resp.get_data(as_text=True)
+
+
 class TestCrossCuttingApi:
     def test_correlation_id_is_returned_and_echoed(self, client):
         resp = client.get("/health", headers={CORRELATION_HEADER: "trace-123"})

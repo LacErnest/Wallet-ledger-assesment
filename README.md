@@ -109,6 +109,10 @@ simultaneous transfers can never produce a negative balance.
 All `POST`s accept an `Idempotency-Key` header. Every request carries an
 `X-Correlation-ID` (provided or generated) echoed on the response.
 
+**Interactive API reference (Swagger UI):** `http://localhost:8000/api/v1/docs` —
+OpenAPI 3 spec at `/api/v1/openapi.json`. Every endpoint documents its parameters,
+responses, error codes and examples.
+
 ### Teaching docs
 
 Each major decision is explained simply in [`docs/`](docs/) (bilingual):
