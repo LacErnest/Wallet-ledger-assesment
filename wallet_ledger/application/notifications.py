@@ -18,7 +18,7 @@ from wallet_ledger.domain.events import (
     TRANSFER_FAILED,
 )
 from wallet_ledger.extensions import db
-from wallet_ledger.infrastructure.notifications import EmailChannel, NotificationChannel, SmsChannel
+from wallet_ledger.infrastructure.notifications import NotificationChannel
 from wallet_ledger.models.notification import Notification
 
 logger = logging.getLogger(__name__)
@@ -72,12 +72,3 @@ class NotificationService:
             return self._accounts.get(account_id).owner_id
         except Exception:  # noqa: BLE001 — une notification ne doit jamais faire échouer un paiement
             return account_id
-
-
-def build_default_notification_service() -> NotificationService:
-    from flask import current_app
-
-    return NotificationService([
-        EmailChannel(current_app.config["EMAIL_FROM"]),
-        SmsChannel(current_app.config["SMS_FROM"]),
-    ])

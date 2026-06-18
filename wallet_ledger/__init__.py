@@ -12,10 +12,31 @@ import logging
 import redis
 from flask import Flask
 
+from wallet_ledger import models  # noqa: F401 — l'import enregistre les tables (Alembic)
+from wallet_ledger.api.accounts import bp as accounts_bp
+from wallet_ledger.api.deposits import bp as deposits_bp
+from wallet_ledger.api.docs import bp as docs_bp
+from wallet_ledger.api.errors import register_error_handlers
+from wallet_ledger.api.fx import bp as fx_bp
+from wallet_ledger.api.transfers import bp as transfers_bp
+from wallet_ledger.api.webhooks import bp as webhooks_bp
+from wallet_ledger.application.notifications import NotificationService
 from wallet_ledger.config import Config
+from wallet_ledger.domain.events import (
+    DEPOSIT_COMPLETED,
+    FUNDS_RESERVED,
+    TRANSFER_COMPLETED,
+    TRANSFER_FAILED,
+    event_bus,
+)
 from wallet_ledger.extensions import db, migrate
+from wallet_ledger.infrastructure.cache import BalanceCache
+from wallet_ledger.infrastructure.notifications import EmailChannel, SmsChannel
+from wallet_ledger.infrastructure.tracing import init_tracing
 
 logger = logging.getLogger(__name__)
+
+API_PREFIX = "/api/v1"
 
 
 def create_app(config_object: type = Config) -> Flask:
@@ -24,9 +45,6 @@ def create_app(config_object: type = Config) -> Flask:
 
     db.init_app(app)
     migrate.init_app(app, db)
-
-    # Importer les modèles enregistre toutes les tables sur les métadonnées (Alembic).
-    from wallet_ledger import models  # noqa: F401
 
     _init_redis(app)
     _register_blueprints(app)
@@ -48,38 +66,17 @@ def _init_redis(app: Flask) -> None:
 
 
 def _register_blueprints(app: Flask) -> None:
-    from wallet_ledger.api.accounts import bp as accounts_bp
-    from wallet_ledger.api.deposits import bp as deposits_bp
-    from wallet_ledger.api.fx import bp as fx_bp
-    from wallet_ledger.api.transfers import bp as transfers_bp
-    from wallet_ledger.api.webhooks import bp as webhooks_bp
-
-    prefix = "/api/v1"
-    for blueprint in (accounts_bp, transfers_bp, deposits_bp, webhooks_bp, fx_bp):
-        app.register_blueprint(blueprint, url_prefix=prefix)
+    for blueprint in (accounts_bp, transfers_bp, deposits_bp, webhooks_bp, fx_bp, docs_bp):
+        app.register_blueprint(blueprint, url_prefix=API_PREFIX)
 
 
 def _register_cross_cutting(app: Flask) -> None:
-    from wallet_ledger.api.errors import register_error_handlers
-    from wallet_ledger.infrastructure.tracing import init_tracing
-
     register_error_handlers(app)
     init_tracing(app)
 
 
 def _wire_event_subscribers(app: Flask) -> None:
     """Branche les réactions aux événements : notifier le client et purger le cache de solde."""
-    from wallet_ledger.application.notifications import NotificationService
-    from wallet_ledger.domain.events import (
-        DEPOSIT_COMPLETED,
-        FUNDS_RESERVED,
-        TRANSFER_COMPLETED,
-        TRANSFER_FAILED,
-        event_bus,
-    )
-    from wallet_ledger.infrastructure.cache import BalanceCache
-    from wallet_ledger.infrastructure.notifications import EmailChannel, SmsChannel
-
     NotificationService([
         EmailChannel(app.config["EMAIL_FROM"]),
         SmsChannel(app.config["SMS_FROM"]),
