@@ -45,6 +45,13 @@ class InsufficientFundsError(DomainError):
         )
 
 
+class InvalidAmountError(DomainError):
+    code = "INVALID_AMOUNT"
+
+    def __init__(self, message: str = "Le montant doit être strictement positif"):
+        super().__init__(message)
+
+
 class CurrencyMismatchError(DomainError):
     code = "CURRENCY_MISMATCH"
 

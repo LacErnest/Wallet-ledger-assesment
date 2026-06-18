@@ -9,6 +9,7 @@ from wallet_ledger.domain.enums import EntryStatus, EntryType, TransactionStatus
 from wallet_ledger.domain.errors import LedgerNotBalancedError
 from wallet_ledger.domain.money import Money
 from wallet_ledger.extensions import db
+from wallet_ledger.models.balance_snapshot import BalanceSnapshot
 from wallet_ledger.models.ledger_entry import LedgerEntry
 from wallet_ledger.models.transaction import Transaction
 
@@ -98,5 +99,4 @@ class TestLedger:
         # Un instantané a forcément été coupé ; le solde via instantané+delta doit
         # rester identique à la somme brute de toutes les écritures.
         assert ledger.balance(alice) == Money("120", "USD")
-        from wallet_ledger.models.balance_snapshot import BalanceSnapshot
         assert BalanceSnapshot.query.filter_by(account_id=alice.id).count() >= 1

@@ -25,12 +25,11 @@ from wallet_ledger.models.ledger_entry import LedgerEntry
 class LedgerService:
     """Opérations comptables pures (n'utilise que la base, jamais le cache)."""
 
-    def post_entries(self, entries: list[LedgerEntry]) -> None:
-        """Enregistre des écritures après avoir vérifié qu'elles s'équilibrent.
+    def assert_balanced(self, entries: list[LedgerEntry]) -> None:
+        """Vérifie l'invariant « somme = 0 par devise », la règle d'or de la partie double.
 
-        L'invariant « somme = 0 par devise » est la règle d'or de la partie double :
-        on l'applique ici, en code, pour qu'aucun appelant ne puisse créer de la
-        monnaie par erreur.
+        On l'isole pour pouvoir aussi la rejouer au moment de solder un transfert en
+        deux phases (où débit et crédit sont écrits à des instants différents).
         """
         totals: dict[str, Decimal] = defaultdict(Decimal)
         for entry in entries:
@@ -40,6 +39,9 @@ class LedgerService:
             if total != 0:
                 raise LedgerNotBalancedError(currency, str(total))
 
+    def post_entries(self, entries: list[LedgerEntry]) -> None:
+        """Enregistre un jeu d'écritures équilibré (aucun appelant ne peut créer de monnaie)."""
+        self.assert_balanced(entries)
         db.session.add_all(entries)
 
     def balance(self, account: Account) -> Money:
