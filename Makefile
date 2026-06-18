@@ -5,7 +5,7 @@ FLASK := uv run flask --app wallet_ledger
 COMPOSE := docker compose
 
 .DEFAULT_GOAL := help
-.PHONY: help install up down logs dev migrate migration seed test test-down lint fmt shell clean
+.PHONY: help install up down logs dev migrate migration seed test test-down lint fmt bench shell clean
 
 help: ## Affiche cette aide
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -55,6 +55,10 @@ lint: ## Vérifie le style et les erreurs sans rien modifier (ruff)
 fmt: ## Corrige et formate le code automatiquement (ruff)
 	uv run ruff check --fix .
 	uv run ruff format .
+
+bench: ## Mesure la latence de lecture de solde (objectif < 10 ms)
+	$(COMPOSE) up -d db redis
+	uv run python -m scripts.benchmark_balance
 
 shell: ## Ouvre un shell Flask (contexte applicatif)
 	$(FLASK) shell
