@@ -58,8 +58,8 @@ class TransferService:
             sender, receiver, correlation_id,
         )
         self.ledger.post_entries([
-            self._entry(sender.id, txn.id, -money.amount, EntryType.DEBIT, EntryStatus.SUCCESS, money.currency),
-            self._entry(receiver.id, txn.id, money.amount, EntryType.CREDIT, EntryStatus.SUCCESS, money.currency),
+            LedgerEntry.debit(sender.id, txn.id, money.amount, money.currency),
+            LedgerEntry.credit(receiver.id, txn.id, money.amount, money.currency),
         ])
         self._snapshot(sender, receiver)
         db.session.commit()
@@ -84,7 +84,7 @@ class TransferService:
         # Réservation = débit PENDING seul. La transaction ne s'équilibrera qu'au
         # règlement, quand le crédit sera créé ; on n'appelle donc pas post_entries ici.
         db.session.add(
-            self._entry(sender.id, txn.id, -money.amount, EntryType.DEBIT, EntryStatus.PENDING, money.currency)
+            LedgerEntry.debit(sender.id, txn.id, money.amount, money.currency, EntryStatus.PENDING)
         )
         db.session.commit()
 
@@ -109,8 +109,7 @@ class TransferService:
         receiver = self._get(txn.details["receiver_id"])
 
         debit.status = EntryStatus.SUCCESS
-        credit = self._entry(receiver.id, txn.id, money.amount, EntryType.CREDIT,
-                             EntryStatus.SUCCESS, money.currency)
+        credit = LedgerEntry.credit(receiver.id, txn.id, money.amount, money.currency)
         db.session.add(credit)
 
         # Filet de sécurité : l'ensemble des écritures de la transaction doit désormais
@@ -167,12 +166,6 @@ class TransferService:
         db.session.add(txn)
         db.session.flush()
         return txn
-
-    def _entry(self, account_id, transaction_id, amount, entry_type, status, currency) -> LedgerEntry:
-        return LedgerEntry(
-            account_id=account_id, transaction_id=transaction_id, amount=amount,
-            entry_type=entry_type, status=status, currency=currency,
-        )
 
     def _snapshot(self, *accounts: Account) -> None:
         for account in accounts:

@@ -12,7 +12,7 @@ from decimal import Decimal
 
 from wallet_ledger.application.accounts import AccountService
 from wallet_ledger.application.ledger import LedgerService
-from wallet_ledger.domain.enums import EntryStatus, EntryType, TransactionStatus, TransactionType
+from wallet_ledger.domain.enums import TransactionStatus, TransactionType
 from wallet_ledger.domain.errors import InsufficientFundsError, InvalidAmountError, SameCurrencyError
 from wallet_ledger.domain.events import DomainEvent, TRANSFER_COMPLETED, event_bus as default_event_bus
 from wallet_ledger.domain.money import Money
@@ -72,10 +72,10 @@ class FxService:
 
         # Quatre écritures : devise source équilibrée via pool_from, devise cible via pool_to.
         self.ledger.post_entries([
-            self._entry(sender.id, txn.id, -sent.amount, EntryType.DEBIT, sent.currency),
-            self._entry(pool_from.id, txn.id, sent.amount, EntryType.CREDIT, sent.currency),
-            self._entry(pool_to.id, txn.id, -received.amount, EntryType.DEBIT, received.currency),
-            self._entry(receiver.id, txn.id, received.amount, EntryType.CREDIT, received.currency),
+            LedgerEntry.debit(sender.id, txn.id, sent.amount, sent.currency),
+            LedgerEntry.credit(pool_from.id, txn.id, sent.amount, sent.currency),
+            LedgerEntry.debit(pool_to.id, txn.id, received.amount, received.currency),
+            LedgerEntry.credit(receiver.id, txn.id, received.amount, received.currency),
         ])
         self.ledger.maybe_snapshot(sender)
         self.ledger.maybe_snapshot(receiver)
@@ -91,9 +91,3 @@ class FxService:
             correlation_id=correlation_id,
         ))
         return txn
-
-    def _entry(self, account_id, transaction_id, amount, entry_type, currency) -> LedgerEntry:
-        return LedgerEntry(
-            account_id=account_id, transaction_id=transaction_id, amount=amount,
-            entry_type=entry_type, status=EntryStatus.SUCCESS, currency=currency,
-        )

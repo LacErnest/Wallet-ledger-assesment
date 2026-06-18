@@ -13,7 +13,7 @@ from decimal import Decimal
 
 from wallet_ledger.application.accounts import AccountService
 from wallet_ledger.application.ledger import LedgerService
-from wallet_ledger.domain.enums import EntryStatus, EntryType, TransactionStatus, TransactionType
+from wallet_ledger.domain.enums import TransactionStatus, TransactionType
 from wallet_ledger.domain.errors import (
     DepositAmountMismatchError,
     InvalidAmountError,
@@ -96,10 +96,8 @@ class DepositService:
         clearing = self.accounts.get_or_create_internal(_CLEARING_OWNER, account.currency)
 
         self.ledger.post_entries([
-            LedgerEntry(account_id=clearing.id, transaction_id=txn.id, amount=-authorized.amount,
-                        entry_type=EntryType.DEBIT, status=EntryStatus.SUCCESS, currency=authorized.currency),
-            LedgerEntry(account_id=account.id, transaction_id=txn.id, amount=authorized.amount,
-                        entry_type=EntryType.CREDIT, status=EntryStatus.SUCCESS, currency=authorized.currency),
+            LedgerEntry.debit(clearing.id, txn.id, authorized.amount, authorized.currency),
+            LedgerEntry.credit(account.id, txn.id, authorized.amount, authorized.currency),
         ])
         txn.status = TransactionStatus.SUCCESS
         self.ledger.maybe_snapshot(account)
