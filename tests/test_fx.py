@@ -2,6 +2,7 @@
 transfert multi-devises ne doit créer ni détruire d'argent dans aucune des deux devises.
 """
 
+import threading
 from collections import defaultdict
 from decimal import Decimal
 
@@ -11,6 +12,8 @@ from wallet_ledger.application.fx import FxService
 from wallet_ledger.application.ledger import LedgerService
 from wallet_ledger.domain.errors import InsufficientFundsError, SameCurrencyError
 from wallet_ledger.domain.money import Money
+from wallet_ledger.extensions import db
+from wallet_ledger.models.account import Account
 from wallet_ledger.models.ledger_entry import LedgerEntry
 
 
@@ -50,3 +53,34 @@ class TestFx:
         fund(alice, 100)
         with pytest.raises(SameCurrencyError):
             FxService().execute_fx_transfer(alice.id, bob.id, Decimal("10"))
+
+    def test_concurrent_fx_transfers_do_not_overdraw(self, app, alice, make_account, fund):
+        """Le verrou de ligne sur l'expéditeur protège aussi le change : deux transferts
+        FX simultanés de 108 USD avec seulement 150 USD ne peuvent pas tous deux passer.
+        """
+        bob_eur = make_account("bob_eur", "EUR")
+        fund(alice, 150)
+        alice_id, receiver_id = alice.id, bob_eur.id
+        results: list[str] = []
+
+        def worker():
+            with app.app_context():
+                try:
+                    FxService().execute_fx_transfer(alice_id, receiver_id, Decimal("108"))
+                    results.append("ok")
+                except InsufficientFundsError:
+                    results.append("rejected")
+                finally:
+                    db.session.remove()
+
+        threads = [threading.Thread(target=worker) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert results.count("ok") == 1
+        assert results.count("rejected") == 1
+        # L'expéditeur n'est jamais négatif : il reste 150 - 108 = 42 USD.
+        alice_reloaded = db.session.get(Account, alice_id)
+        assert LedgerService().balance(alice_reloaded) == Money("42", "USD")
