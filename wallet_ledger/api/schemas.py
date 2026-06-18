@@ -30,6 +30,11 @@ class DepositSchema(Schema):
     phone_number = fields.String(required=False)
 
 
+class FxRateSchema(Schema):
+    from_currency = fields.String(required=True, data_key="from", validate=validate.Length(equal=3))
+    to_currency = fields.String(required=True, data_key="to", validate=validate.Length(equal=3))
+
+
 class FxConvertSchema(Schema):
     from_currency = fields.String(required=True, data_key="from", validate=validate.Length(equal=3))
     to_currency = fields.String(required=True, data_key="to", validate=validate.Length(equal=3))

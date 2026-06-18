@@ -95,8 +95,10 @@ class FxService:
                 LedgerEntry.credit(receiver.id, txn.id, received.amount, received.currency),
             ]
         )
-        self.ledger.maybe_snapshot(sender)
-        self.ledger.maybe_snapshot(receiver)
+        # On fige aussi les comptes pool : sinon leur historique grossit sans limite et
+        # le calcul de leur solde se dégrade — c'est précisément ce que l'instantané évite.
+        for account in (sender, receiver, pool_from, pool_to):
+            self.ledger.maybe_snapshot(account)
         db.session.commit()
 
         self.events.publish(

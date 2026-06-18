@@ -3,6 +3,7 @@ traçabilité, vérification de webhook) via le client de test Flask.
 """
 
 import json
+from decimal import Decimal
 
 from wallet_ledger.application.accounts import AccountService
 from wallet_ledger.infrastructure.payments.base import hmac_sha256_hex
@@ -181,6 +182,42 @@ class TestApiDocs:
         resp = client.get(f"{API}/redoc")
         assert resp.status_code == 200
         assert "redoc" in resp.get_data(as_text=True).lower()
+
+
+class TestFxApi:
+    def test_rate(self, client):
+        body = client.get(f"{API}/fx/rate?from=USD&to=EUR").get_json()
+        assert body["from"] == "USD" and body["to"] == "EUR"
+        assert Decimal(body["rate"]) > 0
+
+    def test_convert(self, client):
+        body = client.get(f"{API}/fx/convert?from=USD&to=EUR&amount=108").get_json()
+        assert body == {"converted_amount": "100.00", "currency": "EUR"}
+
+    def test_fx_transfer_moves_funds_across_currencies(self, client, fund):
+        usd = _create_account(client, "alice", "USD")
+        eur = _create_account(client, "bob", "EUR")
+        fund(AccountService().get_by_number(usd), 200)
+
+        resp = client.post(
+            f"{API}/fx/transfer",
+            json={"sender_account_number": usd, "receiver_account_number": eur, "amount": "108"},
+        )
+        assert resp.status_code == 201
+        assert resp.get_json()["type"] == "FX_TRANSFER"
+        assert client.get(f"{API}/accounts/{usd}/balance").get_json()["balance"] == "92.00"
+        assert client.get(f"{API}/accounts/{eur}/balance").get_json()["balance"] == "100.00"
+
+    def test_same_currency_fx_is_rejected(self, client, fund):
+        a = _create_account(client, "alice", "USD")
+        b = _create_account(client, "bob", "USD")
+        fund(AccountService().get_by_number(a), 100)
+        resp = client.post(
+            f"{API}/fx/transfer",
+            json={"sender_account_number": a, "receiver_account_number": b, "amount": "10"},
+        )
+        assert resp.status_code == 422
+        assert resp.get_json()["code"] == "SAME_CURRENCY"
 
 
 class TestCrossCuttingApi:

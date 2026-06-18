@@ -354,6 +354,39 @@ def _paths() -> dict:
                 },
             }
         },
+        "/fx/rate": {
+            "get": {
+                "tags": ["FX"],
+                "summary": "Get the exchange rate between two currencies",
+                "parameters": [
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "required": True,
+                        "schema": {"type": "string"},
+                        "example": "USD",
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "required": True,
+                        "schema": {"type": "string"},
+                        "example": "EUR",
+                    },
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Exchange rate",
+                        "content": {
+                            "application/json": {
+                                "example": {"from": "USD", "to": "EUR", "rate": "0.92592593"}
+                            }
+                        },
+                    },
+                    "400": {"$ref": "#/components/responses/ValidationError"},
+                },
+            }
+        },
         "/fx/convert": {
             "get": {
                 "tags": ["FX"],
