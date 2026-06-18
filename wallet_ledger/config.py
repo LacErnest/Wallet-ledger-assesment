@@ -43,6 +43,20 @@ class Config:
     FX_API_URL = os.environ.get("FX_API_URL", "")
     FX_API_KEY = os.environ.get("FX_API_KEY", "")
 
+    # Fournisseurs de paiement : Stripe (cartes) et PawaPay (mobile money MTN/Orange).
+    # Le secret de webhook prouve que la confirmation vient bien du fournisseur ;
+    # sans secret valide on refuse de créditer (sécurité « fail closed »).
+    STRIPE_API_KEY = os.environ.get("STRIPE_API_KEY", "")
+    STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+
+    PAWAPAY_BASE_URL = os.environ.get("PAWAPAY_BASE_URL", "https://api.sandbox.pawapay.io")
+    PAWAPAY_API_TOKEN = os.environ.get("PAWAPAY_API_TOKEN", "")
+    PAWAPAY_WEBHOOK_SECRET = os.environ.get("PAWAPAY_WEBHOOK_SECRET", "")
+
+    # Expéditeurs par défaut des notifications (email / SMS).
+    EMAIL_FROM = os.environ.get("EMAIL_FROM", "no-reply@wallet.local")
+    SMS_FROM = os.environ.get("SMS_FROM", "Wallet")
+
 
 class TestConfig(Config):
     TESTING = True
@@ -51,3 +65,12 @@ class TestConfig(Config):
         "TEST_DATABASE_URL",
         "postgresql+psycopg://wallet:wallet@localhost:5433/wallet_test",
     )
+
+    # Les tests doivent être hermétiques : aucun appel réseau réel. On vide les clés
+    # API (mode hors-ligne simulé) mais on fixe des secrets de webhook déterministes
+    # pour pouvoir vérifier les signatures.
+    STRIPE_API_KEY = ""
+    STRIPE_WEBHOOK_SECRET = "whsec_test"
+    PAWAPAY_API_TOKEN = ""
+    PAWAPAY_WEBHOOK_SECRET = "pawapay_whsec_test"
+    FX_API_URL = ""

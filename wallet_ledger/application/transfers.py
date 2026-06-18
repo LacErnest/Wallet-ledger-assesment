@@ -11,11 +11,11 @@ from __future__ import annotations
 import uuid
 from decimal import Decimal
 
+from wallet_ledger.application.accounts import AccountService
 from wallet_ledger.application.ledger import LedgerService
 from wallet_ledger.application.risk import RiskService
 from wallet_ledger.domain.enums import EntryStatus, EntryType, TransactionStatus, TransactionType
 from wallet_ledger.domain.errors import (
-    AccountNotFoundError,
     CurrencyMismatchError,
     InsufficientFundsError,
     InvalidAmountError,
@@ -38,9 +38,10 @@ from wallet_ledger.models.transaction import Transaction
 
 class TransferService:
     def __init__(self, ledger: LedgerService | None = None, risk: RiskService | None = None,
-                 events=default_event_bus):
+                 accounts: AccountService | None = None, events=default_event_bus):
         self.ledger = ledger or LedgerService()
         self.risk = risk or RiskService()
+        self.accounts = accounts or AccountService()
         self.events = events
 
     # --- Mode direct -----------------------------------------------------------
@@ -138,18 +139,10 @@ class TransferService:
 
     # --- Aides privées ---------------------------------------------------------
     def _lock(self, account_id: str) -> Account:
-        # Verrou de ligne : deux transferts simultanés sur le même expéditeur sont
-        # sérialisés, donc le contrôle de solde ne peut jamais voir un solde périmé.
-        account = db.session.query(Account).filter_by(id=account_id).with_for_update().first()
-        if account is None:
-            raise AccountNotFoundError(account_id)
-        return account
+        return self.accounts.lock(account_id)
 
     def _get(self, account_id: str) -> Account:
-        account = db.session.get(Account, account_id)
-        if account is None:
-            raise AccountNotFoundError(account_id)
-        return account
+        return self.accounts.get(account_id)
 
     def _validate(self, sender: Account, receiver: Account, amount: Decimal) -> Money:
         if sender.currency != receiver.currency:
