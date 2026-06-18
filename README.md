@@ -63,31 +63,36 @@ Python 3.12 · Flask 3 · PostgreSQL 16 · Redis 7 · SQLAlchemy 2 + Alembic · 
 
 ### Run it
 
-```bash
-# 1. Everything in containers (api + postgres + redis), migrations run on boot:
-docker compose up --build
-# API on http://localhost:8000  (postgres on host :5433, redis on host :6380)
+`make help` lists every command. The quickest start:
 
-# 2. Local dev with uv (DB + cache in Docker):
-uv sync
-docker compose up -d db redis
-uv run flask --app wallet_ledger db upgrade
-uv run flask --app wallet_ledger run --debug
+```bash
+cp .env.example .env          # then fill credentials (optional — see offline mode below)
+make up                       # builds & starts api + postgres + redis; runs migrations on boot
+make seed                     # (optional) sample accounts + a funded transfer to explore
 ```
 
-Copy `.env.example` to `.env` and fill credentials. Without external keys the system runs
-in **offline mode** (stubbed providers, built-in FX rates) so it is fully usable and testable.
+After `make up` the **API is live at http://localhost:8000** — no extra step. Useful targets:
+
+```bash
+make dev      # run the API locally with hot reload (db + redis in Docker)
+make logs     # tail the API logs
+make down     # stop the stack (data kept)
+```
+
+Copy `.env.example` to `.env`. Without external keys the system runs in **offline mode**
+(stubbed providers, built-in FX rates) so it is fully usable and testable.
 
 ### Tests
 
 ```bash
-docker compose up -d db redis          # tests run against real PostgreSQL
-createdb -h localhost -p 5433 -U wallet wallet_test   # once
-uv run pytest                          # 45 domain-focused tests
+make test     # spins up isolated test-db + test-redis containers, then runs pytest
 ```
 
-The concurrency test spawns **real threads against PostgreSQL** to prove that two
-simultaneous transfers can never produce a negative balance.
+Integration tests run against **dedicated throwaway containers** (`test-db` on :5434,
+`test-redis` on :6381, started via the compose `test` profile) — they never touch dev data
+and each test starts from a clean state. The concurrency tests spawn **real threads against
+PostgreSQL** to prove that two simultaneous transfers (and two replayed webhooks) can never
+produce a negative balance or a double-credit.
 
 ### API
 
@@ -109,9 +114,9 @@ simultaneous transfers can never produce a negative balance.
 All `POST`s accept an `Idempotency-Key` header. Every request carries an
 `X-Correlation-ID` (provided or generated) echoed on the response.
 
-**Interactive API reference (Swagger UI):** `http://localhost:8000/api/v1/docs` —
-OpenAPI 3 spec at `/api/v1/openapi.json`. Every endpoint documents its parameters,
-responses, error codes and examples.
+**Interactive API reference:** Swagger UI (try-it-out) at `/api/v1/docs` and ReDoc
+(clean reference) at `/api/v1/redoc`, both off the OpenAPI 3 spec at `/api/v1/openapi.json`.
+Every endpoint documents its parameters, responses, error codes and examples.
 
 ### Teaching docs
 
@@ -195,32 +200,30 @@ Python 3.12 · Flask 3 · PostgreSQL 16 · Redis 7 · SQLAlchemy 2 + Alembic · 
 
 ### Lancer le projet
 
-```bash
-# 1. Tout en conteneurs (api + postgres + redis), migrations au démarrage :
-docker compose up --build
-# API sur http://localhost:8000  (postgres hôte :5433, redis hôte :6380)
+`make help` liste toutes les commandes. Démarrage le plus rapide :
 
-# 2. Développement local avec uv (base + cache via Docker) :
-uv sync
-docker compose up -d db redis
-uv run flask --app wallet_ledger db upgrade
-uv run flask --app wallet_ledger run --debug
+```bash
+cp .env.example .env          # puis renseigner les identifiants (optionnel, cf. mode hors-ligne)
+make up                       # build + démarre api + postgres + redis ; migrations au boot
+make seed                     # (optionnel) comptes de démo + un transfert financé
 ```
 
-Copier `.env.example` en `.env`. Sans clés externes, le système tourne en **mode
-hors-ligne** (fournisseurs simulés, taux de change intégrés) : pleinement utilisable et
-testable.
+Après `make up`, l'**API tourne sur http://localhost:8000** — aucune étape supplémentaire.
+Autres cibles utiles : `make dev` (API en local, rechargement à chaud), `make logs`, `make down`.
+
+Sans clés externes, le système tourne en **mode hors-ligne** (fournisseurs simulés, taux
+de change intégrés) : pleinement utilisable et testable.
 
 ### Tests
 
 ```bash
-docker compose up -d db redis
-createdb -h localhost -p 5433 -U wallet wallet_test   # une fois
-uv run pytest                          # 45 tests orientés domaine
+make test     # démarre des conteneurs de test isolés (test-db, test-redis) puis pytest
 ```
 
-Le test de concurrence lance de **vrais threads sur PostgreSQL** pour prouver que deux
-transferts simultanés ne peuvent jamais produire un solde négatif.
+Les tests d'intégration s'exécutent sur des **conteneurs jetables dédiés** (jamais les
+données de dev). Les tests de concurrence lancent de **vrais threads sur PostgreSQL** pour
+prouver que deux transferts simultanés — ou deux webhooks rejoués — ne peuvent jamais
+produire un solde négatif ni un double crédit.
 
 ### Compromis
 
