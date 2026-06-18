@@ -4,4 +4,5 @@
 set -e
 
 uv run flask --app wallet_ledger db upgrade
-exec uv run gunicorn --bind 0.0.0.0:8000 --workers 4 wsgi:app
+# On démarre via la fabrique applicative : robuste quel que soit le répertoire courant.
+exec uv run gunicorn --bind 0.0.0.0:8000 --workers 4 "wallet_ledger:create_app()"
