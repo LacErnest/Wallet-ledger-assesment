@@ -126,6 +126,11 @@ class TestApiDocs:
         assert resp.status_code == 200
         assert "swagger-ui" in resp.get_data(as_text=True)
 
+    def test_redoc_is_served(self, client):
+        resp = client.get(f"{API}/redoc")
+        assert resp.status_code == 200
+        assert "redoc" in resp.get_data(as_text=True).lower()
+
 
 class TestCrossCuttingApi:
     def test_correlation_id_is_returned_and_echoed(self, client):

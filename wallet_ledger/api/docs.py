@@ -1,7 +1,8 @@
-"""Documentation interactive de l'API (Swagger UI).
+"""Documentation interactive de l'API.
 
-On sert la spec OpenAPI en JSON et une interface Swagger UI pour explorer et essayer
-les endpoints, à la manière d'une référence d'API de fournisseur (type Stripe).
+On sert la spec OpenAPI en JSON et DEUX rendus, car ils répondent à des besoins
+différents : Swagger UI pour *essayer* les endpoints (formulaires « try it out »),
+ReDoc pour *lire* une référence claire et imprimable. Les deux pointent sur la même spec.
 """
 
 from __future__ import annotations
@@ -36,6 +37,21 @@ _SWAGGER_HTML = """<!DOCTYPE html>
 </html>"""
 
 
+# ReDoc : une seule balise web component, alimentée par la même spec.
+_REDOC_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>wallet-ledger API — ReDoc</title>
+</head>
+<body>
+  <redoc spec-url="/api/v1/openapi.json"></redoc>
+  <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
+</body>
+</html>"""
+
+
 @bp.get("/openapi.json")
 def openapi_json():
     return jsonify(build_spec())
@@ -44,3 +60,8 @@ def openapi_json():
 @bp.get("/docs")
 def swagger_ui():
     return Response(_SWAGGER_HTML, mimetype="text/html")
+
+
+@bp.get("/redoc")
+def redoc():
+    return Response(_REDOC_HTML, mimetype="text/html")
