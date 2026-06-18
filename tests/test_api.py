@@ -102,6 +102,20 @@ class TestTransfersApi:
         assert first.get_json()["transaction_id"] == second.get_json()["transaction_id"]
         assert client.get(f"{API}/accounts/{alice_number}/balance").get_json()["balance"] == "150.00"
 
+    def test_reverse_transaction_restores_balance(self, client, fund):
+        alice_number = _create_account(client, "alice", "USD")
+        bob_number = _create_account(client, "bob", "USD")
+        fund(AccountService().get_by_number(alice_number), 200)
+        txn = client.post(f"{API}/transfers", json={
+            "sender_account_number": alice_number,
+            "receiver_account_number": bob_number, "amount": "30",
+        }).get_json()
+
+        reversal = client.post(f"{API}/transactions/{txn['transaction_id']}/reverse")
+        assert reversal.status_code == 201
+        assert reversal.get_json()["type"] == "REVERSAL"
+        assert client.get(f"{API}/accounts/{alice_number}/balance").get_json()["balance"] == "200.00"
+
     def test_insufficient_funds_returns_422(self, client, fund):
         alice_number = _create_account(client, "alice", "USD")
         bob_number = _create_account(client, "bob", "USD")

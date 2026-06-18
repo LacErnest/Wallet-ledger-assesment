@@ -158,6 +158,19 @@ def _paths() -> dict:
         "/transfers/{transaction_id}/fail": {"post": _two_phase_op(
             "Fail a reserved transfer",
             "Releases a reservation: PENDING entries become FAILED and the reserved funds are returned.")},
+        "/transactions/{transaction_id}/reverse": {
+            "post": {
+                "tags": ["Transfers"],
+                "summary": "Reverse a transaction (compensating entry)",
+                "description": "Reverses a SUCCESS transaction by recording a new REVERSAL transaction whose entries mirror the original. The original is never mutated; it is marked REVERSED.",
+                "parameters": [_path_param("transaction_id", "Transaction id to reverse"), _IDEMPOTENCY_HEADER],
+                "responses": {
+                    "201": _json("#/components/schemas/Transaction", _TXN_EXAMPLE | {"type": "REVERSAL"}) | {"description": "Compensating transaction created"},
+                    "404": {"$ref": "#/components/responses/NotFound"},
+                    "409": _error_response("Only a SUCCESS transaction can be reversed", "INVALID_TRANSACTION_STATE", "Transition d'état interdite"),
+                },
+            }
+        },
         "/deposits": {
             "post": {
                 "tags": ["Deposits"],

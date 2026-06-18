@@ -18,6 +18,7 @@ from wallet_ledger.api.deposits import bp as deposits_bp
 from wallet_ledger.api.docs import bp as docs_bp
 from wallet_ledger.api.errors import register_error_handlers
 from wallet_ledger.api.fx import bp as fx_bp
+from wallet_ledger.api.transactions import bp as transactions_bp
 from wallet_ledger.api.transfers import bp as transfers_bp
 from wallet_ledger.api.webhooks import bp as webhooks_bp
 from wallet_ledger.application.notifications import NotificationService
@@ -68,7 +69,8 @@ def _init_redis(app: Flask) -> None:
 
 
 def _register_blueprints(app: Flask) -> None:
-    for blueprint in (accounts_bp, transfers_bp, deposits_bp, webhooks_bp, fx_bp, docs_bp):
+    for blueprint in (accounts_bp, transfers_bp, transactions_bp, deposits_bp,
+                      webhooks_bp, fx_bp, docs_bp):
         app.register_blueprint(blueprint, url_prefix=API_PREFIX)
 
 
