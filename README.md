@@ -120,6 +120,7 @@ produce a negative balance or a double-credit.
 | POST | `/api/v1/transactions/{id}/reverse` | Reverse a transaction (compensating entry) |
 | POST | `/api/v1/deposits` | Initiate a deposit (Stripe / PawaPay) |
 | POST | `/api/v1/payments/webhook/{provider}` | Provider confirmation (signature-verified) |
+| GET | `/api/v1/fx/rate` | Get the exchange rate between two currencies |
 | GET | `/api/v1/fx/convert` | Convert an amount |
 | POST | `/api/v1/fx/transfer` | Cross-currency transfer (via FX pool) |
 
