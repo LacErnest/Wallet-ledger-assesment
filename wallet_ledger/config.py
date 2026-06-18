@@ -34,10 +34,6 @@ class Config:
     # resommer des millions de lignes à chaque lecture.
     SNAPSHOT_EVERY_N_ENTRIES = int(os.environ.get("SNAPSHOT_EVERY_N_ENTRIES", "100"))
 
-    # Un conflit de verrou optimiste est normal sous forte concurrence : on retente
-    # quelques fois avant d'abandonner plutôt que de faire échouer l'utilisateur.
-    MAX_WRITE_RETRIES = int(os.environ.get("MAX_WRITE_RETRIES", "3"))
-
     # API de change externe. Vide => taux de repli intégrés (le système reste
     # utilisable hors-ligne, sans dépendre d'un tiers).
     FX_API_URL = os.environ.get("FX_API_URL", "")

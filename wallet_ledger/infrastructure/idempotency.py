@@ -70,7 +70,11 @@ def idempotent(view):
         try:
             response = view(*args, **kwargs)
         except Exception:
-            # Échec inattendu : on libère la clé pour qu'un nouvel essai soit possible.
+            # Échec AVANT commit (validation, fonds insuffisants…) : la vue n'a rien
+            # écrit, on libère donc la clé pour autoriser un nouvel essai. Les échecs
+            # APRÈS le commit financier ne doivent jamais arriver ici : les abonnés aux
+            # événements isolent déjà leurs erreurs (voir EventBus.publish), si bien
+            # qu'aucune opération validée ne peut être rejouée par cette libération.
             db.session.rollback()
             claim = IdempotencyKey.query.filter_by(key=key).first()
             if claim is not None and not claim.is_completed:

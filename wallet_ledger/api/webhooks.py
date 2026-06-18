@@ -31,5 +31,5 @@ def payment_webhook(provider: str):
         # Échec/annulation côté fournisseur : rien à créditer.
         return {"status": "ignored"}
 
-    txn = DepositService().settle(result.reference, result.amount)
+    txn = DepositService().settle(result.reference, result.amount, result.currency)
     return {"transaction_id": txn.id, "status": txn.status.value}

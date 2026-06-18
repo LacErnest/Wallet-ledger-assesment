@@ -2,15 +2,18 @@
 fournisseur ne doit jamais pouvoir créditer un montant différent de l'autorisé.
 """
 
+import threading
 from decimal import Decimal
 
 import pytest
 
+from wallet_ledger.application.accounts import AccountService
 from wallet_ledger.application.deposits import DepositService
 from wallet_ledger.application.ledger import LedgerService
 from wallet_ledger.domain.enums import TransactionStatus
 from wallet_ledger.domain.errors import DepositAmountMismatchError, InvalidTransactionStateError
 from wallet_ledger.domain.money import Money
+from wallet_ledger.extensions import db
 from wallet_ledger.models.ledger_entry import LedgerEntry
 
 
@@ -56,3 +59,34 @@ class TestDeposits:
         with pytest.raises(InvalidTransactionStateError):
             service.settle(txn.reference, Decimal("50"))
         assert LedgerService().balance(alice) == Money("50", "USD")
+
+    def test_concurrent_settlements_credit_only_once(self, app, make_account):
+        """Deux confirmations simultanées du même dépôt : une seule crédite (verrou de ligne)."""
+        account = make_account("kamga", "XAF")
+        txn = DepositService().initiate(
+            account.id, Decimal("5000"), "pawapay",
+            context={"operator": "mtn", "phone_number": "237650000000"},
+        )
+        reference, account_number = txn.reference, account.number
+        results: list[str] = []
+
+        def worker():
+            with app.app_context():
+                try:
+                    DepositService().settle(reference, Decimal("5000"), "XAF")
+                    results.append("ok")
+                except InvalidTransactionStateError:
+                    results.append("rejected")
+                finally:
+                    db.session.remove()
+
+        threads = [threading.Thread(target=worker) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert results.count("ok") == 1
+        assert results.count("rejected") == 1
+        account_reloaded = AccountService().get_by_number(account_number)
+        assert LedgerService().balance(account_reloaded) == Money("5000", "XAF")

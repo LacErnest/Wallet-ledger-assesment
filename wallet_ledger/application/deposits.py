@@ -68,9 +68,13 @@ class DepositService:
         db.session.commit()
         return txn
 
-    def settle(self, reference: str, confirmed_amount: Decimal | None) -> Transaction:
+    def settle(self, reference: str, confirmed_amount: Decimal | None,
+               confirmed_currency: str | None = None) -> Transaction:
         """Confirme un dépôt (appelé après vérification de la signature du webhook)."""
-        txn = Transaction.query.filter_by(reference=reference).first()
+        # Verrou de ligne sur la transaction : les fournisseurs rejouent leurs webhooks,
+        # parfois en parallèle. Sans ce verrou, deux confirmations simultanées
+        # passeraient toutes deux le test « PENDING » et créditeraient deux fois.
+        txn = db.session.query(Transaction).filter_by(reference=reference).with_for_update().first()
         if txn is None:
             raise TransactionNotFoundError(reference)
         # Déjà réglé : on ne crédite pas deux fois (sécurité face aux webhooks rejoués).
@@ -78,6 +82,12 @@ class DepositService:
             raise InvalidTransactionStateError(txn.status, "dépôt déjà traité")
 
         authorized = Money(txn.amount, txn.currency)
+        # On réconcilie le montant ET la devise : un fournisseur ne doit pouvoir créditer
+        # ni un autre montant, ni une autre devise que ce qui a été autorisé.
+        if confirmed_currency is not None and confirmed_currency.upper() != txn.currency:
+            raise DepositAmountMismatchError(
+                f"{authorized.amount} {txn.currency}", f"{confirmed_amount} {confirmed_currency}"
+            )
         confirmed = authorized if confirmed_amount is None else Money(confirmed_amount, txn.currency)
         if confirmed != authorized:
             raise DepositAmountMismatchError(str(authorized.amount), str(confirmed.amount))
