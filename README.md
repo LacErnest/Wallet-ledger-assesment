@@ -94,6 +94,17 @@ and each test starts from a clean state. The concurrency tests spawn **real thre
 PostgreSQL** to prove that two simultaneous transfers (and two replayed webhooks) can never
 produce a negative balance or a double-credit.
 
+### Operations
+
+- **Liveness:** `GET /health` (process up). **Readiness:** `GET /health/ready` —
+  checks PostgreSQL + Redis connectivity and returns `503` until both answer.
+- **Structured logging:** every log line is JSON and carries the request's
+  `correlation_id`, so an incident on a payment is traceable end-to-end.
+- **Quality gate:** `make lint` (ruff check + format check) and `make fmt`; a
+  `.pre-commit-config.yaml` runs ruff on every commit.
+- **Reversals:** `POST /api/v1/transactions/{id}/reverse` records a compensating
+  REVERSAL (the original is never mutated, only marked `REVERSED`).
+
 ### API
 
 | Method | Endpoint | Purpose |
@@ -106,6 +117,7 @@ produce a negative balance or a double-credit.
 | POST | `/api/v1/transfers/initiate` | Phase 1 — reserve funds |
 | POST | `/api/v1/transfers/{id}/commit` | Phase 2 — settle (after risk check) |
 | POST | `/api/v1/transfers/{id}/fail` | Release a reservation |
+| POST | `/api/v1/transactions/{id}/reverse` | Reverse a transaction (compensating entry) |
 | POST | `/api/v1/deposits` | Initiate a deposit (Stripe / PawaPay) |
 | POST | `/api/v1/payments/webhook/{provider}` | Provider confirmation (signature-verified) |
 | GET | `/api/v1/fx/convert` | Convert an amount |
