@@ -7,6 +7,7 @@ qu'un « fonds insuffisant » devient un 422 et un « compte introuvable » un 4
 from __future__ import annotations
 
 from flask import Flask, jsonify
+from marshmallow import ValidationError
 
 from wallet_ledger.domain.errors import DomainError
 
@@ -32,6 +33,12 @@ def register_error_handlers(app: Flask) -> None:
     def _handle_domain_error(error: DomainError):
         status = _STATUS_BY_CODE.get(error.code, 400)
         return jsonify({"error": error.message, "code": error.code}), status
+
+    @app.errorhandler(ValidationError)
+    def _handle_validation_error(error: ValidationError):
+        # Requête mal formée rejetée à la frontière, avant d'atteindre le domaine.
+        return jsonify({"error": "Requête invalide", "code": "VALIDATION_ERROR",
+                        "details": error.messages}), 400
 
     @app.errorhandler(404)
     def _handle_not_found(_error):
