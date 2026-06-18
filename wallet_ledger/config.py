@@ -16,6 +16,7 @@ load_dotenv()
 
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+    LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO")
 
     # PostgreSQL est la source de vérité : on y tient pour le verrouillage de lignes
     # qui empêche deux transferts simultanés de rendre un solde négatif.

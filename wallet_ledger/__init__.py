@@ -18,6 +18,7 @@ from wallet_ledger.api.deposits import bp as deposits_bp
 from wallet_ledger.api.docs import bp as docs_bp
 from wallet_ledger.api.errors import register_error_handlers
 from wallet_ledger.api.fx import bp as fx_bp
+from wallet_ledger.api.health import bp as health_bp
 from wallet_ledger.api.transactions import bp as transactions_bp
 from wallet_ledger.api.transfers import bp as transfers_bp
 from wallet_ledger.api.webhooks import bp as webhooks_bp
@@ -32,6 +33,7 @@ from wallet_ledger.domain.events import (
 )
 from wallet_ledger.extensions import db, migrate
 from wallet_ledger.infrastructure.cache import BalanceCache
+from wallet_ledger.infrastructure.logging import configure_logging
 from wallet_ledger.infrastructure.notifications import EmailChannel, SmsChannel
 from wallet_ledger.infrastructure.tracing import init_tracing
 from wallet_ledger.seeds import register_cli
@@ -53,12 +55,7 @@ def create_app(config_object: type = Config) -> Flask:
     _register_cross_cutting(app)
     _wire_event_subscribers(app)
     register_cli(app)
-
-    @app.get("/health")
-    def health():
-        return {"status": "ok"}
-
-    logging.basicConfig(level=logging.INFO)
+    configure_logging(app)
     return app
 
 
@@ -69,6 +66,8 @@ def _init_redis(app: Flask) -> None:
 
 
 def _register_blueprints(app: Flask) -> None:
+    # Sondes de santé à la racine (hors /api/v1) : convention attendue par les orchestrateurs.
+    app.register_blueprint(health_bp)
     for blueprint in (
         accounts_bp,
         transfers_bp,
