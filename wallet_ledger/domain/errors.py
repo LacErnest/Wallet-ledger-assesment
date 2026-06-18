@@ -59,6 +59,22 @@ class CurrencyMismatchError(DomainError):
         super().__init__(f"Devises incompatibles : {expected} vs {actual}")
 
 
+class SameCurrencyError(DomainError):
+    """Un transfert FX n'a de sens qu'entre deux devises différentes."""
+
+    code = "SAME_CURRENCY"
+
+    def __init__(self, currency: str):
+        super().__init__(f"Transfert FX inutile : les deux comptes sont en {currency}")
+
+
+class UnknownCurrencyError(DomainError):
+    code = "UNKNOWN_CURRENCY"
+
+    def __init__(self, currency: str):
+        super().__init__(f"Devise inconnue du fournisseur de taux : {currency}")
+
+
 class TransactionNotFoundError(DomainError):
     code = "TRANSACTION_NOT_FOUND"
 
