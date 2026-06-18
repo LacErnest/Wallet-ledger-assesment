@@ -33,6 +33,7 @@ from wallet_ledger.extensions import db, migrate
 from wallet_ledger.infrastructure.cache import BalanceCache
 from wallet_ledger.infrastructure.notifications import EmailChannel, SmsChannel
 from wallet_ledger.infrastructure.tracing import init_tracing
+from wallet_ledger.seeds import register_cli
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,7 @@ def create_app(config_object: type = Config) -> Flask:
     _register_blueprints(app)
     _register_cross_cutting(app)
     _wire_event_subscribers(app)
+    register_cli(app)
 
     @app.get("/health")
     def health():
