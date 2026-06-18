@@ -56,11 +56,12 @@ class Config:
 
 class TestConfig(Config):
     TESTING = True
-    # Base dédiée : les tests ne doivent jamais toucher les données de dev.
+    # Conteneurs jetables dédiés (profil "test" de docker compose), isolés du dev.
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         "TEST_DATABASE_URL",
-        "postgresql+psycopg://wallet:wallet@localhost:5433/wallet_test",
+        "postgresql+psycopg://wallet:wallet@localhost:5434/wallet_test",
     )
+    REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6381/0")
 
     # Les tests doivent être hermétiques : aucun appel réseau réel. On vide les clés
     # API (mode hors-ligne simulé) mais on fixe des secrets de webhook déterministes
