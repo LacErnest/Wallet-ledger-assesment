@@ -13,6 +13,7 @@ from decimal import Decimal
 
 from wallet_ledger.application.accounts import AccountService
 from wallet_ledger.application.ledger import LedgerService
+from wallet_ledger.domain.aggregates import TransactionAggregate
 from wallet_ledger.domain.enums import TransactionStatus, TransactionType
 from wallet_ledger.domain.errors import (
     DepositAmountMismatchError,
@@ -25,7 +26,6 @@ from wallet_ledger.domain.events import event_bus as default_event_bus
 from wallet_ledger.domain.money import Money
 from wallet_ledger.extensions import db
 from wallet_ledger.infrastructure.payments import get_payment_provider
-from wallet_ledger.models.ledger_entry import LedgerEntry
 from wallet_ledger.models.transaction import Transaction
 
 # Propriétaire du compte de compensation interne : la contrepartie de tout dépôt.
@@ -112,12 +112,12 @@ class DepositService:
         account = self.accounts.lock(txn.details["account_id"])
         clearing = self.accounts.get_or_create_internal(_CLEARING_OWNER, account.currency)
 
-        self.ledger.post_entries(
-            [
-                LedgerEntry.debit(clearing.id, txn.id, authorized.amount, authorized.currency),
-                LedgerEntry.credit(account.id, txn.id, authorized.amount, authorized.currency),
-            ]
-        )
+        # Le dépôt est une transaction équilibrée : compte de compensation débité,
+        # compte client crédité. L'agrégat porte l'invariant, le grand livre persiste.
+        transaction = TransactionAggregate(authorized.currency)
+        transaction.debit(clearing.id, authorized)
+        transaction.credit(account.id, authorized)
+        self.ledger.post(transaction, txn.id)
         txn.status = TransactionStatus.SUCCESS
         self.ledger.maybe_snapshot(account)
         self.ledger.maybe_snapshot(clearing)

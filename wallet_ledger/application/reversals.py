@@ -12,8 +12,10 @@ import uuid
 
 from wallet_ledger.application.accounts import AccountService
 from wallet_ledger.application.ledger import LedgerService
+from wallet_ledger.domain.aggregates import TransactionAggregate
 from wallet_ledger.domain.enums import EntryStatus, EntryType, TransactionStatus, TransactionType
 from wallet_ledger.domain.errors import InvalidTransactionStateError, TransactionNotFoundError
+from wallet_ledger.domain.money import Money
 from wallet_ledger.extensions import db
 from wallet_ledger.models.ledger_entry import LedgerEntry
 from wallet_ledger.models.transaction import Transaction
@@ -59,19 +61,16 @@ class ReversalService:
         db.session.add(reversal)
         db.session.flush()
 
-        # Miroir de chaque écriture : un débit d'origine devient un crédit, et inversement.
-        # L'ensemble reste équilibré à zéro par devise (c'est le miroir d'un ensemble équilibré).
-        mirrors = []
+        # Miroir de chaque écriture via l'agrégat : un débit d'origine devient un crédit,
+        # et inversement. L'ensemble reste équilibré (c'est le miroir d'un ensemble équilibré).
+        mirror = TransactionAggregate(txn.currency)
         for entry in original_entries:
+            money = Money(abs(entry.amount), entry.currency)
             if entry.entry_type == EntryType.DEBIT:
-                mirrors.append(
-                    LedgerEntry.credit(entry.account_id, reversal.id, entry.amount, entry.currency)
-                )
+                mirror.credit(entry.account_id, money)
             else:
-                mirrors.append(
-                    LedgerEntry.debit(entry.account_id, reversal.id, entry.amount, entry.currency)
-                )
-        self.ledger.post_entries(mirrors)
+                mirror.debit(entry.account_id, money)
+        self.ledger.post(mirror, reversal.id)
 
         txn.status = TransactionStatus.REVERSED
         for account_id in {entry.account_id for entry in original_entries}:

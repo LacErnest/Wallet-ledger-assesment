@@ -12,18 +12,14 @@ from decimal import Decimal
 
 from wallet_ledger.application.accounts import AccountService
 from wallet_ledger.application.ledger import LedgerService
+from wallet_ledger.domain.aggregates import AccountAggregate, TransactionAggregate
 from wallet_ledger.domain.enums import TransactionStatus, TransactionType
-from wallet_ledger.domain.errors import (
-    InsufficientFundsError,
-    InvalidAmountError,
-    SameCurrencyError,
-)
+from wallet_ledger.domain.errors import InvalidAmountError, SameCurrencyError
 from wallet_ledger.domain.events import TRANSFER_COMPLETED, DomainEvent
 from wallet_ledger.domain.events import event_bus as default_event_bus
 from wallet_ledger.domain.money import Money
 from wallet_ledger.extensions import db
 from wallet_ledger.infrastructure.fx_rates import FxRateProvider
-from wallet_ledger.models.ledger_entry import LedgerEntry
 from wallet_ledger.models.transaction import Transaction
 
 # Propriétaire des comptes pool de change (un compte interne par devise).
@@ -62,8 +58,7 @@ class FxService:
         if not sent.is_positive():
             raise InvalidAmountError()
         available = self.ledger.available_balance(sender)
-        if available < sent:
-            raise InsufficientFundsError(str(available.amount), str(sent.amount))
+        AccountAggregate(sender.id, sender.currency).ensure_can_debit(sent, available)
 
         received = self.convert(sent, receiver.currency)
         pool_from = self.accounts.get_or_create_internal(_FX_POOL_OWNER, sender.currency)
@@ -86,15 +81,14 @@ class FxService:
         db.session.add(txn)
         db.session.flush()
 
-        # Quatre écritures : devise source équilibrée via pool_from, devise cible via pool_to.
-        self.ledger.post_entries(
-            [
-                LedgerEntry.debit(sender.id, txn.id, sent.amount, sent.currency),
-                LedgerEntry.credit(pool_from.id, txn.id, sent.amount, sent.currency),
-                LedgerEntry.debit(pool_to.id, txn.id, received.amount, received.currency),
-                LedgerEntry.credit(receiver.id, txn.id, received.amount, received.currency),
-            ]
-        )
+        # Quatre écritures via l'agrégat : devise source équilibrée par pool_from, devise
+        # cible par pool_to. L'agrégat vérifie que CHAQUE devise se solde à zéro.
+        transaction = TransactionAggregate(sent.currency)
+        transaction.debit(sender.id, sent)
+        transaction.credit(pool_from.id, sent)
+        transaction.debit(pool_to.id, received)
+        transaction.credit(receiver.id, received)
+        self.ledger.post(transaction, txn.id)
         # On fige aussi les comptes pool : sinon leur historique grossit sans limite et
         # le calcul de leur solde se dégrade — c'est précisément ce que l'instantané évite.
         for account in (sender, receiver, pool_from, pool_to):

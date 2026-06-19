@@ -14,10 +14,10 @@ from decimal import Decimal
 from wallet_ledger.application.accounts import AccountService
 from wallet_ledger.application.ledger import LedgerService
 from wallet_ledger.application.risk import RiskService
+from wallet_ledger.domain.aggregates import AccountAggregate, TransactionAggregate
 from wallet_ledger.domain.enums import EntryStatus, EntryType, TransactionStatus, TransactionType
 from wallet_ledger.domain.errors import (
     CurrencyMismatchError,
-    InsufficientFundsError,
     InvalidAmountError,
     InvalidTransactionStateError,
     TransactionNotFoundError,
@@ -69,12 +69,13 @@ class TransferService:
             receiver,
             correlation_id,
         )
-        self.ledger.post_entries(
-            [
-                LedgerEntry.debit(sender.id, txn.id, money.amount, money.currency),
-                LedgerEntry.credit(receiver.id, txn.id, money.amount, money.currency),
-            ]
-        )
+        # On construit l'agrégat Transaction, qui possède ses écritures et impose la
+        # partie double ; le grand livre ne fait ensuite que le matérialiser.
+        transaction = TransactionAggregate(money.currency)
+        transaction.debit(sender.id, money)
+        transaction.credit(receiver.id, money)
+        self.ledger.post(transaction, txn.id)
+
         self._snapshot(sender, receiver)
         db.session.commit()
 
@@ -175,9 +176,9 @@ class TransferService:
         return money
 
     def _ensure_funds(self, sender: Account, money: Money) -> None:
+        # L'agrégat Compte détient l'invariant « jamais à découvert » : on lui délègue.
         available = self.ledger.available_balance(sender)
-        if available < money:
-            raise InsufficientFundsError(str(available.amount), str(money.amount))
+        AccountAggregate(sender.id, sender.currency).ensure_can_debit(money, available)
 
     def _new_transaction(
         self, type_, status, money: Money, sender: Account, receiver: Account, correlation_id: str
