@@ -68,6 +68,7 @@ infrastructure plugs in via interfaces). The **domain layer has no Flask/SQLAlch
 wallet_ledger/
 ├── domain/                  # Cœur métier pur — aucune dépendance framework
 │   ├── money.py             # Value Object Money (Decimal)
+│   ├── aggregates.py        # Racines d'agrégat (Transaction, Account) + invariants
 │   ├── enums.py             # États & types (lifecycle)
 │   ├── events.py            # Événements de domaine + bus
 │   └── errors.py            # Exceptions métier
@@ -92,7 +93,8 @@ tests/                       # Tests orientés domaine (pytest, PostgreSQL)
 docs/                        # Docs pédagogiques (une décision = un fichier)
 ```
 
-**Design patterns used (and why):** Value Object (`Money`), Repository-ish via SQLAlchemy
+**Design patterns used (and why):** Value Object (`Money`), Aggregate roots
+(`TransactionAggregate`/`AccountAggregate` own the invariants), Repository-ish via SQLAlchemy
 session, **Ports & Adapters** (payment/FX/notification providers behind interfaces →
 Open/Closed, Dependency Inversion), **Decorator** (idempotency, tracing), **Observer**
 (domain event bus), **Factory** (provider selection), **Optimistic Lock** (SQLAlchemy

@@ -38,9 +38,11 @@ Domain                 → Money (value object), enums, domain events, errors  �
 Infrastructure         → PostgreSQL, Redis, payment & FX adapters (Ports & Adapters)
 ```
 
-**Design patterns used:** Value Object (`Money`), Ports & Adapters (payment/FX/notification
-providers, balance cache), Factory (provider selection), Observer (domain event bus),
-Decorator (idempotency, tracing), Optimistic Lock (SQLAlchemy `version_id_col`) + row locks.
+**Design patterns used:** Value Object (`Money`), **Aggregate roots** (`TransactionAggregate`,
+`AccountAggregate` — own the double-entry and no-overdraft invariants), Ports & Adapters
+(payment/FX/notification providers, balance cache), Factory (provider selection), Observer
+(domain event bus), Decorator (idempotency, tracing), Optimistic Lock (SQLAlchemy
+`version_id_col`) + row locks.
 
 ### Key design decisions (the *why*)
 
@@ -205,10 +207,11 @@ Domaine                → Money (value object), énumérations, événements, e
 Infrastructure         → PostgreSQL, Redis, adaptateurs paiement & change (Ports & Adaptateurs)
 ```
 
-**Patrons utilisés :** Value Object (`Money`), Ports & Adaptateurs (fournisseurs de
-paiement/change/notification, cache de solde), Fabrique (choix du fournisseur),
-Observateur (bus d'événements), Décorateur (idempotence, traçabilité), Verrou optimiste
-(`version_id_col`) + verrous de ligne.
+**Patrons utilisés :** Value Object (`Money`), **Racines d'agrégat** (`TransactionAggregate`,
+`AccountAggregate` — portent les invariants de partie double et de non-découvert), Ports &
+Adaptateurs (fournisseurs de paiement/change/notification, cache de solde), Fabrique (choix
+du fournisseur), Observateur (bus d'événements), Décorateur (idempotence, traçabilité),
+Verrou optimiste (`version_id_col`) + verrous de ligne.
 
 ### Décisions de conception clés (le *pourquoi*)
 

@@ -11,27 +11,26 @@ expensive to get wrong (the money rules) stays testable in isolation, survives a
 framework swap, and can't accidentally depend on a request context. Dependencies point
 *inward*: outer layers know the domain, never the reverse (Ports & Adapters).
 
-### Where are the "aggregates"? (a deliberate interpretation)
+### Aggregate roots that own their invariants
 The brief names `AccountAggregate` / `TransactionAggregate` as aggregates that "enforce
-domain invariants." We *do* enforce those invariants — we just don't wrap them in classical
-aggregate-root objects. The reasoning:
+domain invariants." We model both as **explicit aggregate roots** — pure-domain classes in
+`domain/aggregates.py`, no framework imports:
 
-- The **transaction** is the real consistency boundary: its entries must sum to zero per
-  currency. That invariant is enforced at the single place every write goes through —
-  `LedgerService.assert_balanced` (`application/ledger.py`) — and re-checked when a
-  two-phase transfer settles (`transfers.py`). No caller can persist an unbalanced
-  transaction.
-- The **account** invariant ("never overdrawn") is guarded by a DB row lock on every debit
-  (`AccountService.lock`) combined with the ledger-derived *available* balance — not by
-  mutating an in-memory object.
+- **`TransactionAggregate`** *owns its entries* and enforces the double-entry rule. You add
+  `debit()` / `credit()` lines, and `assert_balanced()` guarantees the entries sum to zero
+  **per currency** (`domain/aggregates.py`). The services build this aggregate; the ledger
+  only persists what the aggregate has already validated (`LedgerService.post`). No caller
+  can materialise an unbalanced transaction.
+- **`AccountAggregate`** enforces "never overdrawn": `ensure_can_debit(amount, available)`
+  raises `InsufficientFundsError` if the available balance can't cover the debit. Transfers
+  and FX delegate the funds check to it.
 
-So the aggregate **boundaries and invariants are real and guarded**; they live in the
-application services and the database (the true arbiter under concurrency), rather than in
-aggregate-root classes. This is a pragmatic trade: less ceremony, and correctness anchored
-where concurrency is actually resolved. A stricter DDD style would add `Transaction` /
-`Account` aggregate roots that own their entries and expose behaviour methods — a refactor
-we could make **without changing any guarantee**. Worth naming the trade-off out loud
-rather than claiming a textbook aggregate we didn't build.
+So the business rules live **on the domain aggregates** (tested in isolation,
+`tests/test_aggregates.py`), not scattered through services. The services orchestrate
+(load, lock, persist) and delegate the *invariants* to the aggregate roots — the model is
+no longer anemic. Concurrency is still resolved at the database (row locks); the aggregate
+owns the *accounting* invariants, the DB owns the *isolation* guarantee. The two are
+complementary.
 
 ### The domain event bus (Observer)
 A transfer's job is to move money correctly — not to send email, SMS, or talk to Redis.
@@ -78,27 +77,26 @@ reste testable isolément, survit à un changement de framework, et ne dépend p
 accident d'un contexte de requête. Les dépendances pointent *vers l'intérieur* : les
 couches externes connaissent le domaine, jamais l'inverse (Ports & Adaptateurs).
 
-### Où sont les « agrégats » ? (une interprétation assumée)
+### Des racines d'agrégat qui possèdent leurs invariants
 L'énoncé cite `AccountAggregate` / `TransactionAggregate` comme agrégats qui « imposent les
-invariants du domaine ». Nous *imposons* bien ces invariants — sans les emballer dans des
-objets racines d'agrégat classiques. Le raisonnement :
+invariants du domaine ». Nous modélisons les deux comme de **vraies racines d'agrégat** —
+des classes purement domaine dans `domain/aggregates.py`, sans aucun framework :
 
-- La **transaction** est la vraie frontière de cohérence : la somme de ses écritures doit
-  valoir zéro par devise. Cet invariant est imposé au seul endroit par lequel passe toute
-  écriture — `LedgerService.assert_balanced` (`application/ledger.py`) — et revérifié au
-  règlement d'un transfert en deux phases (`transfers.py`). Aucun appelant ne peut
-  persister une transaction déséquilibrée.
-- L'invariant du **compte** (« jamais à découvert ») est protégé par un verrou de ligne en
-  base à chaque débit (`AccountService.lock`) combiné au solde *disponible* déduit du grand
-  livre — pas par la mutation d'un objet en mémoire.
+- **`TransactionAggregate`** *possède ses écritures* et impose la partie double. On ajoute
+  des lignes `debit()` / `credit()`, et `assert_balanced()` garantit que la somme vaut zéro
+  **par devise** (`domain/aggregates.py`). Les services construisent l'agrégat ; le grand
+  livre ne fait que persister ce qu'il a déjà validé (`LedgerService.post`). Aucun appelant
+  ne peut matérialiser une transaction déséquilibrée.
+- **`AccountAggregate`** impose « jamais à découvert » : `ensure_can_debit(montant,
+  disponible)` lève `InsufficientFundsError` si le disponible ne couvre pas le débit. Les
+  transferts et le change lui délèguent ce contrôle.
 
-Les **frontières et invariants d'agrégat sont donc réels et protégés** ; ils vivent dans
-les services applicatifs et la base (l'arbitre véritable sous concurrence), plutôt que dans
-des classes racines d'agrégat. C'est un compromis pragmatique : moins de cérémonie, et la
-justesse ancrée là où la concurrence se résout vraiment. Un style DDD plus strict
-introduirait des racines `Transaction` / `Account` possédant leurs écritures — un
-remaniement faisable **sans changer aucune garantie**. Mieux vaut nommer ce compromis que
-de prétendre à un agrégat manuel que nous n'avons pas construit.
+Les règles métier vivent donc **sur les agrégats du domaine** (testés en isolation,
+`tests/test_aggregates.py`), au lieu d'être éparpillées dans les services. Les services
+orchestrent (charger, verrouiller, persister) et délèguent les *invariants* aux racines
+d'agrégat — le modèle n'est plus anémique. La concurrence reste résolue par la base
+(verrous de ligne) ; l'agrégat porte les invariants *comptables*, la base la garantie
+d'*isolation*. Les deux sont complémentaires.
 
 ### Le bus d'événements de domaine (Observateur)
 Le rôle d'un transfert est de déplacer l'argent correctement — pas d'envoyer un email,
