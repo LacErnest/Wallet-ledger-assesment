@@ -14,11 +14,14 @@ us *later* whether it worked. The flow (`application/deposits.py`):
    (`deposits.py:71`) posts two balanced ledger entries: **clearing → user**
    (`deposits.py:88-93`), then marks the transaction `SUCCESS`.
 
-### Three providers, one port (Ports & Adapters / Strategy)
+### Three providers, one port (Ports & Adapters + Factory)
 The deposit service only knows the abstract `PaymentProvider` port
-(`payments/base.py:40`). The concrete adapter is chosen by name in a factory
-(`payments/__init__.py`, the Strategy). Adding a provider = one new class + one
-branch, with zero change to the core — PayPal below was added in exactly that way.
+(`payments/base.py:40`); each provider is an **adapter** wrapping an external API. The
+concrete adapter is chosen by name in a **factory** — `get_payment_provider`
+(`payments/__init__.py`). (It's *not* the Strategy pattern: these are adapters to
+different systems, not interchangeable algorithms injected into a context.) Adding a
+provider = one new adapter class + one branch, with zero change to the core — PayPal
+below was added in exactly that way.
 
 - **Stripe** (`stripe_provider.py`) — cards. Amounts in **minor units / cents**
   (`amount * 100`, except zero-decimal currencies, `stripe_provider.py:40`). Webhook
@@ -62,10 +65,13 @@ dit *plus tard* si ça a marché. Le flux (`application/deposits.py`) :
    écritures équilibrées : **compensation → utilisateur** (`:88-93`), puis passe la
    transaction à `SUCCESS`.
 
-### Trois fournisseurs, un seul port (Ports & Adaptateurs / Stratégie)
-Le service ne connaît que le port abstrait `PaymentProvider` (`payments/base.py:40`).
-L'adaptateur concret est choisi par nom dans une fabrique (`payments/__init__.py`).
-Ajouter un fournisseur = une classe + une branche, sans toucher au cœur — PayPal a été
+### Trois fournisseurs, un seul port (Ports & Adaptateurs + Fabrique)
+Le service ne connaît que le port abstrait `PaymentProvider` (`payments/base.py:40`) ;
+chaque fournisseur est un **adaptateur** d'une API externe. L'adaptateur concret est
+choisi par nom dans une **fabrique** — `get_payment_provider` (`payments/__init__.py`).
+(Ce n'est *pas* le patron Stratégie : ce sont des adaptateurs vers des systèmes
+différents, pas des algorithmes interchangeables injectés dans un contexte.) Ajouter un
+fournisseur = une classe d'adaptateur + une branche, sans toucher au cœur — PayPal a été
 ajouté exactement ainsi.
 
 - **Stripe** (`stripe_provider.py`) — cartes. Montants en **sous-unités / centimes**

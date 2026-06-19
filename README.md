@@ -39,7 +39,7 @@ Infrastructure         → PostgreSQL, Redis, payment & FX adapters (Ports & Ada
 ```
 
 **Design patterns used:** Value Object (`Money`), Ports & Adapters (payment/FX/notification
-providers, balance cache), Strategy (provider selection), Observer (domain event bus),
+providers, balance cache), Factory (provider selection), Observer (domain event bus),
 Decorator (idempotency, tracing), Optimistic Lock (SQLAlchemy `version_id_col`) + row locks.
 
 ### Key design decisions (the *why*)
@@ -206,7 +206,7 @@ Infrastructure         → PostgreSQL, Redis, adaptateurs paiement & change (Por
 ```
 
 **Patrons utilisés :** Value Object (`Money`), Ports & Adaptateurs (fournisseurs de
-paiement/change/notification, cache de solde), Stratégie (choix du fournisseur),
+paiement/change/notification, cache de solde), Fabrique (choix du fournisseur),
 Observateur (bus d'événements), Décorateur (idempotence, traçabilité), Verrou optimiste
 (`version_id_col`) + verrous de ligne.
 

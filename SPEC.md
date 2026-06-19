@@ -95,7 +95,7 @@ docs/                        # Docs pédagogiques (une décision = un fichier)
 **Design patterns used (and why):** Value Object (`Money`), Repository-ish via SQLAlchemy
 session, **Ports & Adapters** (payment/FX/notification providers behind interfaces →
 Open/Closed, Dependency Inversion), **Decorator** (idempotency, tracing), **Observer**
-(domain event bus), **Strategy** (provider selection), **Optimistic Lock** (SQLAlchemy
+(domain event bus), **Factory** (provider selection), **Optimistic Lock** (SQLAlchemy
 `version_id_col`).
 
 ---

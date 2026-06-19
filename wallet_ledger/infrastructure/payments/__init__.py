@@ -1,7 +1,9 @@
-"""Fabrique de fournisseurs de paiement (patron Stratégie).
+"""Fabrique de fournisseurs de paiement (patron Fabrique).
 
-On choisit l'adaptateur selon le nom demandé et on l'instancie avec sa configuration.
-Ajouter un fournisseur = ajouter une branche ici et une classe, sans rien changer ailleurs.
+Chaque fournisseur (Stripe, PawaPay, PayPal) est un *adaptateur* derrière le port
+`PaymentProvider` (Ports & Adaptateurs) : il traduit une API externe vers notre interface.
+Cette fabrique en choisit un par son nom et l'instancie avec sa configuration. Ajouter un
+fournisseur = une classe d'adaptateur + une branche ici, sans rien changer ailleurs.
 """
 
 from __future__ import annotations
