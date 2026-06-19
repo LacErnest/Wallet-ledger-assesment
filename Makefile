@@ -5,7 +5,7 @@ FLASK := uv run flask --app wallet_ledger
 COMPOSE := docker compose
 
 .DEFAULT_GOAL := help
-.PHONY: help install up down logs dev migrate migration seed test test-down lint fmt bench shell clean
+.PHONY: help install up down logs dev migrate migration seed fund test test-down lint fmt bench shell clean
 
 help: ## Affiche cette aide
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) \
@@ -38,6 +38,9 @@ migration: ## Génère une migration : make migration m="message"
 
 seed: ## Insère des comptes et transactions de démonstration
 	$(FLASK) seed
+
+fund: ## Crédite un compte : make fund acc=<numéro> amt=<montant>
+	$(FLASK) fund $(acc) $(amt)
 
 test: ## Lance les tests sur des conteneurs jetables isolés (db + redis de test)
 	$(COMPOSE) --profile test up -d test-db test-redis

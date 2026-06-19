@@ -46,24 +46,43 @@ def _fund(account: Account, amount: Decimal) -> None:
     db.session.commit()
 
 
+def fund_account(number: str, amount: Decimal) -> Account:
+    """Crédite un compte existant (identifié par son numéro). Pratique pour les démos."""
+    account = AccountService().get_by_number(number)
+    _fund(account, amount)
+    return account
+
+
+def _ensure(owner_id: str, currency: str, fund_amount: Decimal | None) -> tuple[Account, bool]:
+    """Récupère un compte (par propriétaire + devise) ou le crée et le finance. Idempotent."""
+    account = Account.query.filter_by(owner_id=owner_id, currency=currency).first()
+    if account is not None:
+        return account, False
+    account = AccountService().create(owner_id, currency)
+    if fund_amount is not None:
+        _fund(account, fund_amount)
+    return account, True
+
+
 def seed() -> dict[str, str]:
-    """Crée les comptes de démonstration et un peu d'historique. Idempotent."""
-    accounts = AccountService()
-    existing = Account.query.filter_by(owner_id="alice", currency="USD").first()
-    if existing is not None:
-        bob = Account.query.filter_by(owner_id="bob", currency="USD").first()
-        kamga = Account.query.filter_by(owner_id="kamga", currency="XAF").first()
-        return {"alice": existing.number, "bob": bob.number, "kamga": kamga.number}
+    """Crée les comptes de démonstration et un peu d'historique. Idempotent (par compte)."""
+    alice, alice_created = _ensure("alice", "USD", Decimal("200"))
+    bob, _ = _ensure("bob", "USD", None)
+    kamga, _ = _ensure("kamga", "XAF", Decimal("5000"))
+    # Compte en EUR financé : permet de tester un transfert multi-devises (EUR -> USD)
+    # sans rien préparer d'autre.
+    claire, _ = _ensure("claire", "EUR", Decimal("100"))
 
-    alice = accounts.create("alice", "USD")
-    bob = accounts.create("bob", "USD")
-    kamga = accounts.create("kamga", "XAF")
+    # Le transfert de démo ne s'exécute qu'à la première création, pour rester idempotent.
+    if alice_created:
+        TransferService().execute(alice.id, bob.id, Decimal("30"))
 
-    _fund(alice, Decimal("200"))
-    _fund(kamga, Decimal("5000"))
-    TransferService().execute(alice.id, bob.id, Decimal("30"))
-
-    return {"alice": alice.number, "bob": bob.number, "kamga": kamga.number}
+    return {
+        "alice": alice.number,
+        "bob": bob.number,
+        "kamga": kamga.number,
+        "claire": claire.number,
+    }
 
 
 def register_cli(app: Flask) -> None:
@@ -73,3 +92,11 @@ def register_cli(app: Flask) -> None:
         for owner, number in seed().items():
             click.echo(f"  {owner:<8} -> compte n° {number}")
         click.echo("Données de démonstration prêtes.")
+
+    @app.cli.command("fund")
+    @click.argument("number")
+    @click.argument("amount")
+    def fund_command(number: str, amount: str):
+        """Crédite un compte : flask fund <numéro> <montant>."""
+        account = fund_account(number, Decimal(amount))
+        click.echo(f"Crédité {amount} {account.currency} sur le compte {number}.")
