@@ -151,21 +151,6 @@ All `POST`s accept an `Idempotency-Key` header. Every request carries an
 (clean reference) at `/api/v1/redoc`, both off the OpenAPI 3 spec at `/api/v1/openapi.json`.
 Every endpoint documents its parameters, responses, error codes and examples.
 
-### Teaching docs
-
-Each major decision is explained simply in [`docs/`](docs/) (bilingual):
-
-1. [Ledger & no balance column](docs/01-ledger-and-no-balance-column.md)
-2. [The `Money` value object](docs/02-money-value-object.md)
-3. [Double-entry invariant](docs/03-double-entry-invariant.md)
-4. [Two-phase transfers](docs/04-two-phase-transfers.md)
-5. [Idempotency](docs/05-idempotency.md)
-6. [Concurrency & locking](docs/06-concurrency-and-locking.md)
-7. [Performance: snapshots & cache](docs/07-performance-snapshots-and-cache.md)
-8. [Deposits, webhooks & providers](docs/08-deposits-webhooks-providers.md)
-9. [FX & cross-currency](docs/09-fx-cross-currency.md)
-10. [DDD, events & tracing](docs/10-ddd-events-tracing.md)
-
 ### Tradeoffs
 
 - **`db.create_all()` is not used** — schema is versioned with Alembic. Migrations run on
@@ -266,6 +251,3 @@ produire un solde négatif ni un double crédit.
 - **Pas de couche d'authentification** — hors périmètre ; webhooks vérifiés par signature.
 - **Bus d'événements en mémoire** — simple et synchrone ; deviendrait un courtier à grande
   échelle, avec les notifications déportées dans un outbox.
-
-Voir [`SPEC.md`](SPEC.md) pour la spécification complète et [`docs/`](docs/) pour les
-explications pédagogiques de chaque décision.
