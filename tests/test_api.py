@@ -86,6 +86,47 @@ class TestDepositWebhookApi:
         assert client.get(f"{API}/accounts/{number}/balance").get_json()["balance"] == "0"
 
 
+class TestWebhookAliasApi:
+    def test_single_endpoint_resolves_provider_from_body(self, client):
+        number = _create_account(client, "kamga", "XAF")
+        deposit = client.post(
+            f"{API}/deposits",
+            json={
+                "account_number": number,
+                "amount": "5000",
+                "provider": "pawapay",
+                "operator": "mtn",
+                "phone_number": "237650000000",
+            },
+        )
+        deposit_id = deposit.get_json()["transaction_id"]
+
+        # Endpoint unique /payments/webhook : le fournisseur est dans le corps.
+        body = json.dumps(
+            {
+                "provider": "pawapay",
+                "depositId": deposit_id,
+                "status": "COMPLETED",
+                "amount": "5000",
+                "currency": "XAF",
+            }
+        )
+        signature = hmac_sha256_hex("pawapay_whsec_test", body.encode())
+        resp = client.post(
+            f"{API}/payments/webhook",
+            data=body,
+            content_type="application/json",
+            headers={"X-Signature": signature},
+        )
+        assert resp.status_code == 200
+        assert client.get(f"{API}/accounts/{number}/balance").get_json()["balance"] == "5000"
+
+    def test_single_endpoint_without_provider_is_rejected(self, client):
+        resp = client.post(f"{API}/payments/webhook", json={"status": "COMPLETED"})
+        assert resp.status_code == 400
+        assert resp.get_json()["code"] == "UNSUPPORTED_PROVIDER"
+
+
 class TestTransfersApi:
     def test_transfer_moves_funds(self, client, fund):
         alice_number = _create_account(client, "alice", "USD")
