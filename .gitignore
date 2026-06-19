@@ -28,3 +28,7 @@ coverage.xml
 .idea/
 .vscode/
 .DS_Store
+
+# Documentation interne & spécification — non suivies par Git (conservées en local)
+docs/
+SPEC.md
