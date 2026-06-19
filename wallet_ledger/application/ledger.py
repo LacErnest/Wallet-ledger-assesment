@@ -7,14 +7,13 @@ C'est le cœur comptable. Deux responsabilités seulement :
 
 from __future__ import annotations
 
-from collections import defaultdict
 from decimal import Decimal
 
 from flask import current_app
 from sqlalchemy import func
 
+from wallet_ledger.domain.aggregates import TransactionAggregate
 from wallet_ledger.domain.enums import EntryStatus, EntryType
-from wallet_ledger.domain.errors import LedgerNotBalancedError
 from wallet_ledger.domain.money import Money
 from wallet_ledger.extensions import db
 from wallet_ledger.models.account import Account
@@ -25,22 +24,40 @@ from wallet_ledger.models.ledger_entry import LedgerEntry
 class LedgerService:
     """Opérations comptables pures (n'utilise que la base, jamais le cache)."""
 
-    def assert_balanced(self, entries: list[LedgerEntry]) -> None:
-        """Vérifie l'invariant « somme = 0 par devise », la règle d'or de la partie double.
+    def post(self, transaction: TransactionAggregate, transaction_id: str) -> None:
+        """Matérialise un agrégat Transaction en base après qu'IL a validé la partie double.
 
-        On l'isole pour pouvoir aussi la rejouer au moment de solder un transfert en
-        deux phases (où débit et crédit sont écrits à des instants différents).
+        C'est l'agrégat qui détient l'invariant ; le service ne fait que persister ce qu'il
+        a autorisé. Aucun appelant ne peut donc créer de la monnaie par une écriture bancale.
         """
-        totals: dict[str, Decimal] = defaultdict(Decimal)
-        for entry in entries:
-            totals[entry.currency] += entry.amount
+        transaction.assert_balanced()
+        db.session.add_all(
+            [
+                LedgerEntry(
+                    account_id=line.account_id,
+                    transaction_id=transaction_id,
+                    amount=line.amount,
+                    entry_type=line.entry_type,
+                    status=line.status,
+                    currency=line.currency,
+                    entry_metadata=line.metadata,
+                )
+                for line in transaction.lines
+            ]
+        )
 
-        for currency, total in totals.items():
-            if total != 0:
-                raise LedgerNotBalancedError(currency, str(total))
+    def assert_balanced(self, entries: list[LedgerEntry]) -> None:
+        """Rejoue l'invariant de partie double sur des écritures existantes (ex. au règlement
+        d'un transfert en deux phases). On délègue à l'agrégat, seul détenteur de la règle."""
+        aggregate = TransactionAggregate(currency=entries[0].currency if entries else "")
+        for entry in entries:
+            aggregate.record(
+                entry.account_id, entry.amount, entry.entry_type, entry.currency, entry.status
+            )
+        aggregate.assert_balanced()
 
     def post_entries(self, entries: list[LedgerEntry]) -> None:
-        """Enregistre un jeu d'écritures équilibré (aucun appelant ne peut créer de monnaie)."""
+        """Enregistre un jeu d'écritures déjà construit (utilisé par les fixtures de test)."""
         self.assert_balanced(entries)
         db.session.add_all(entries)
 
