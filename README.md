@@ -134,6 +134,37 @@ advantage is *asymptotic* — the scan grows linearly with ledger size while sna
 stays flat, so at the brief's 10M-entry scale the snapshot keeps a cache-miss recompute
 bounded. Honest takeaway: **cache for latency, snapshot for scale.**
 
+### How this scales
+
+The implementation here keeps the balance **strictly derived** (snapshot + delta + cache) to
+honour *"no mutable balance column"* literally. To scale to real Stripe/bank volume (1M users,
+10M+ entries, 1000+ reads/s), the next step is **CQRS** — split the immutable ledger (write
+side, the source of truth) from a **maintained balance read model** updated *in the same ACID
+transaction* as the entries:
+
+- **O(1) reads.** A balance becomes a single indexed point-lookup on an `account_balance`
+  projection — no summing, independent of history size. The ledger stays authoritative and
+  the projection is fully rebuildable from it (it's the PDF's own *"Projection / Read Model"*
+  optimization, not a source of truth).
+- **No-overdraft as one atomic statement** — the database enforces it, not the app:
+  ```sql
+  UPDATE account_balance SET balance = balance - :amount
+   WHERE account_id = :id AND balance >= :amount;   -- 0 rows ⇒ insufficient funds
+  ```
+  Race-free, no `SELECT FOR UPDATE`, no lock-then-check window; a `CHECK (balance >= 0)` makes
+  a negative balance physically impossible. The entire concurrency bug class disappears.
+- **Snapshots become async rebuild tooling** (background job), off the write path — used to
+  bootstrap/rebuild a projection from a checkpoint + delta, not to serve reads.
+- **Shard by `account_id`** so entries and the balance row co-locate; reads stay O(1) point
+  lookups on a sharded key → horizontal scale. *Available-balance decisions* use the strongly
+  consistent projection; *display reads* tolerate the cache.
+- **Extreme scale:** move hot money movements to a purpose-built ledger engine like
+  **[TigerBeetle](https://tigerbeetle.com)** — double-entry as the native primitive,
+  no-overdraft enforced atomically, millions of transfers/sec — and keep PostgreSQL for the rest.
+
+Throughout, the **ledger remains the immutable, rebuildable source of truth**; everything else
+is a derived, disposable acceleration layer.
+
 ### API
 
 | Method | Endpoint | Purpose |
@@ -253,6 +284,37 @@ Les tests d'intégration s'exécutent sur des **conteneurs jetables dédiés** (
 données de dev). Les tests de concurrence lancent de **vrais threads sur PostgreSQL** pour
 prouver que deux transferts simultanés — ou deux webhooks rejoués — ne peuvent jamais
 produire un solde négatif ni un double crédit.
+
+### Passage à l'échelle
+
+Ici, le solde reste **strictement déduit** (instantané + delta + cache) pour respecter
+*« pas de colonne de solde mutable »* à la lettre. Pour monter à l'échelle d'une vraie
+plateforme (1M utilisateurs, 10M+ écritures, 1000+ lectures/s), l'étape suivante est le
+**CQRS** : séparer le grand livre immuable (côté écriture, source de vérité) d'un **modèle de
+lecture de solde maintenu** dans la *même transaction ACID* que les écritures :
+
+- **Lectures en O(1).** Le solde devient un simple point-lookup indexé sur une projection
+  `account_balance` — plus aucune somme, indépendamment de la taille de l'historique. Le grand
+  livre reste la référence et la projection est entièrement reconstructible à partir de lui
+  (c'est l'option *« Projection / Read Model »* citée par l'énoncé, pas une source de vérité).
+- **Non-découvert en une seule instruction atomique** — c'est la base qui l'impose, pas le code :
+  ```sql
+  UPDATE account_balance SET balance = balance - :montant
+   WHERE account_id = :id AND balance >= :montant;   -- 0 ligne ⇒ fonds insuffisants
+  ```
+  Sans course, sans `SELECT FOR UPDATE` ni fenêtre « lire puis vérifier » ; un
+  `CHECK (balance >= 0)` rend un solde négatif physiquement impossible.
+- **Les instantanés deviennent un outil de reconstruction asynchrone** (tâche de fond), hors du
+  chemin d'écriture.
+- **Partitionnement par `account_id`** pour que écritures et ligne de solde soient co-localisées
+  → lectures O(1) et passage à l'échelle horizontal. Les décisions de *solde disponible*
+  s'appuient sur la projection fortement cohérente ; les lectures d'*affichage* tolèrent le cache.
+- **Échelle extrême :** confier les mouvements à un moteur de grand livre dédié comme
+  **[TigerBeetle](https://tigerbeetle.com)** (partie double native, non-découvert atomique,
+  millions de transferts/s), et garder PostgreSQL pour le reste.
+
+Dans tous les cas, le **grand livre reste la source de vérité immuable et reconstructible** ;
+tout le reste n'est qu'une couche d'accélération dérivée et jetable.
 
 ### Compromis
 
