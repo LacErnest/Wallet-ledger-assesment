@@ -79,6 +79,16 @@ After `make up` the **API is live at http://localhost:8000** — no extra step. 
 make dev      # run the API locally with hot reload (db + redis in Docker)
 make logs     # tail the API logs
 make down     # stop the stack (data kept)
+make fund acc=<number> amt=<amount>   # top up any account (demo helper)
+```
+
+`make seed` creates `alice`/`bob` (USD), `kamga` (XAF) and `claire` (EUR, funded) — so a
+**cross-currency transfer** works out of the box (note: use `/fx/transfer`, not `/transfers`):
+
+```bash
+# claire (EUR) -> alice (USD): 30 EUR is converted to USD via the FX pool
+curl -X POST localhost:8000/api/v1/fx/transfer -H 'Content-Type: application/json' \
+  -d '{"sender_account_number":"<claire>","receiver_account_number":"<alice>","amount":"30"}'
 ```
 
 Copy `.env.example` to `.env`. Without external keys the system runs in **offline mode**
