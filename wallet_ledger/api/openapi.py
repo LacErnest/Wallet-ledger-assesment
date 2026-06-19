@@ -200,8 +200,11 @@ def _paths() -> dict:
         },
         "/transfers": {
             "post": _transfer_op(
-                "Execute an atomic transfer",
-                "Debits the sender and credits the receiver in one database transaction. The sender row is locked to prevent overdraft under concurrency.",
+                "Execute an atomic (single-phase) transfer",
+                "Single-phase transfer: debit + credit are both written SUCCESS in one database "
+                "transaction (the sender row is locked to prevent overdraft). For the two-phase "
+                "reservation flow (reserve, then settle after a risk check), use "
+                "/transfers/initiate then /transfers/{id}/commit.",
             )
         },
         "/transfers/initiate": {

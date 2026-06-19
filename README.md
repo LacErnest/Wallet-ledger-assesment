@@ -188,6 +188,19 @@ is a derived, disposable acceleration layer.
 All `POST`s accept an `Idempotency-Key` header. Every request carries an
 `X-Correlation-ID` (provided or generated) echoed on the response.
 
+> **Single-phase vs two-phase transfers (deliberate design).** The brief describes two
+> distinct capabilities: an **atomic transfer** (§2A — *"both entries in the same database
+> transaction"*) and a separate **two-phase reservation system** (§3 — reserve, then commit
+> after the Risk Service approves). They are mapped to two flows:
+> - **`POST /transfers`** → the §2A **single-phase** transfer: debit + credit both written
+>   `SUCCESS` in one transaction, immediately.
+> - **`POST /transfers/initiate` → `/{id}/commit` (or `/{id}/fail`)** → the §3 **two-phase**
+>   flow: a `PENDING` reservation, then settlement after `RiskService.assess`, or release.
+>
+> A successful `initiate`+`commit` yields the same ledger result as one `execute`, but adds
+> the held reservation and the risk-approval gate. The brief only prescribes `POST /transfers`
+> as an endpoint; the two-phase endpoint names are our design choice.
+
 **Interactive API reference:** Swagger UI (try-it-out) at `/api/v1/docs` and ReDoc
 (clean reference) at `/api/v1/redoc`, both off the OpenAPI 3 spec at `/api/v1/openapi.json`.
 Every endpoint documents its parameters, responses, error codes and examples.
@@ -252,6 +265,19 @@ Verrou optimiste (`version_id_col`) + verrous de ligne.
 | **Idempotence : réserver d'abord** | La clé unique est posée *avant* l'exécution, donc deux requêtes concurrentes ne peuvent pas doubler un débit. |
 | **Transferts deux phases + service de risque** | Les fonds sont réservés puis réglés après contrôle — la gestion de l'« argent en vol ». |
 | **Webhooks vérifiés, fail-closed** | Un dépôt n'est crédité que si la signature est valide *et* le montant correspond à l'autorisé. |
+
+> **Transfert simple vs deux phases (choix assumé).** L'énoncé décrit deux capacités
+> distinctes : un **transfert atomique** (§2A — *« les deux écritures dans la même transaction »*)
+> et un **système de réservation en deux phases** (§3 — réserver, puis régler après accord du
+> service de risque). On les expose en deux flux :
+> - **`POST /transfers`** → le transfert **simple** (§2A) : débit + crédit écrits `SUCCESS`
+>   d'un coup, immédiatement.
+> - **`POST /transfers/initiate` → `/{id}/commit` (ou `/{id}/fail`)** → le flux **deux phases**
+>   (§3) : réservation `PENDING`, puis règlement après `RiskService.assess`, ou libération.
+>
+> Un `initiate`+`commit` réussi donne le même résultat comptable qu'un `execute`, mais ajoute
+> la réservation et le contrôle de risque. L'énoncé ne nomme que `POST /transfers` comme
+> endpoint ; les noms des endpoints deux phases sont notre choix de conception.
 
 ### Pile technique
 
