@@ -249,7 +249,7 @@ def _paths() -> dict:
             "post": {
                 "tags": ["Deposits"],
                 "summary": "Initiate a deposit",
-                "description": "Creates a PENDING deposit that records the authorized amount, and asks the provider (stripe / pawapay) to charge. The amount is credited only after a signed webhook confirms it (see /payments/webhook).",
+                "description": "Creates a PENDING deposit that records the authorized amount, and asks the provider (stripe / pawapay / paypal) to charge. The amount is credited only after a signed webhook confirms it (see /payments/webhook).",
                 "parameters": [_IDEMPOTENCY_HEADER, _CORRELATION_HEADER],
                 "requestBody": {
                     "required": True,
@@ -288,6 +288,53 @@ def _paths() -> dict:
                 },
             }
         },
+        "/payments/webhook": {
+            "post": {
+                "tags": ["Webhooks"],
+                "summary": "Provider deposit confirmation (single endpoint)",
+                "description": (
+                    "Same as `/payments/webhook/{provider}` but the provider is given in the body "
+                    "(`provider` field) or the `X-Provider` header. Signature is verified fail-closed "
+                    "and the amount/currency reconciled against the authorized deposit."
+                ),
+                "parameters": [
+                    {
+                        "name": "X-Provider",
+                        "in": "header",
+                        "required": False,
+                        "schema": {"type": "string", "enum": ["stripe", "pawapay", "paypal"]},
+                        "description": "Provider name (if not given in the body).",
+                    },
+                ],
+                "requestBody": {
+                    "required": True,
+                    "content": {
+                        "application/json": {
+                            "example": {
+                                "provider": "pawapay",
+                                "depositId": "0d4f9b2e-2b8a-4f1e-9c33-2a1b6c5d4e3f",
+                                "status": "COMPLETED",
+                                "amount": "5000",
+                                "currency": "XAF",
+                            }
+                        }
+                    },
+                },
+                "responses": {
+                    "200": {"description": "Deposit settled or ignored"},
+                    "400": _error_response(
+                        "Provider missing from body and X-Provider header",
+                        "UNSUPPORTED_PROVIDER",
+                        "Fournisseur non supporté : (absent du corps et de l'en-tête X-Provider)",
+                    ),
+                    "401": _error_response(
+                        "Signature verification failed",
+                        "WEBHOOK_VERIFICATION_FAILED",
+                        "Signature de webhook invalide",
+                    ),
+                },
+            }
+        },
         "/payments/webhook/{provider}": {
             "post": {
                 "tags": ["Webhooks"],
@@ -298,7 +345,7 @@ def _paths() -> dict:
                     "deposit — a provider can never credit more, less, or a different currency than authorized."
                 ),
                 "parameters": [
-                    _path_param("provider", "Provider name", enum=["stripe", "pawapay"]),
+                    _path_param("provider", "Provider name", enum=["stripe", "pawapay", "paypal"]),
                     {
                         "name": "Stripe-Signature",
                         "in": "header",
@@ -569,7 +616,7 @@ def _components() -> dict:
                 "properties": {
                     "account_number": {"type": "string", "example": "2104077793"},
                     "amount": {"type": "string", "example": "200.00"},
-                    "provider": {"type": "string", "enum": ["stripe", "pawapay"]},
+                    "provider": {"type": "string", "enum": ["stripe", "pawapay", "paypal"]},
                     "operator": {
                         "type": "string",
                         "enum": ["mtn", "orange"],

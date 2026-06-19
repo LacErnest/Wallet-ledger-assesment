@@ -11,6 +11,7 @@ from flask import current_app
 from wallet_ledger.domain.errors import UnsupportedProviderError
 from wallet_ledger.infrastructure.payments.base import PaymentProvider
 from wallet_ledger.infrastructure.payments.pawapay_provider import PawaPayProvider
+from wallet_ledger.infrastructure.payments.paypal_provider import PayPalProvider
 from wallet_ledger.infrastructure.payments.stripe_provider import StripeProvider
 
 __all__ = ["PaymentProvider", "get_payment_provider"]
@@ -26,5 +27,12 @@ def get_payment_provider(name: str) -> PaymentProvider:
             config["PAWAPAY_BASE_URL"],
             config["PAWAPAY_API_TOKEN"],
             config["PAWAPAY_WEBHOOK_SECRET"],
+        )
+    if key == "paypal":
+        return PayPalProvider(
+            config["PAYPAL_API_BASE"],
+            config["PAYPAL_CLIENT_ID"],
+            config["PAYPAL_SECRET"],
+            config["PAYPAL_WEBHOOK_SECRET"],
         )
     raise UnsupportedProviderError(name)

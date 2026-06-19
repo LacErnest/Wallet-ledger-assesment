@@ -50,6 +50,11 @@ class Config:
     PAWAPAY_API_TOKEN = os.environ.get("PAWAPAY_API_TOKEN", "")
     PAWAPAY_WEBHOOK_SECRET = os.environ.get("PAWAPAY_WEBHOOK_SECRET", "")
 
+    PAYPAL_API_BASE = os.environ.get("PAYPAL_API_BASE", "https://api-m.sandbox.paypal.com")
+    PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "")
+    PAYPAL_SECRET = os.environ.get("PAYPAL_SECRET", "")
+    PAYPAL_WEBHOOK_SECRET = os.environ.get("PAYPAL_WEBHOOK_SECRET", "")
+
     # Expéditeurs par défaut des notifications (email / SMS).
     EMAIL_FROM = os.environ.get("EMAIL_FROM", "no-reply@wallet.local")
     SMS_FROM = os.environ.get("SMS_FROM", "Wallet")
@@ -71,4 +76,7 @@ class TestConfig(Config):
     STRIPE_WEBHOOK_SECRET = "whsec_test"
     PAWAPAY_API_TOKEN = ""
     PAWAPAY_WEBHOOK_SECRET = "pawapay_whsec_test"
+    PAYPAL_CLIENT_ID = ""
+    PAYPAL_SECRET = ""
+    PAYPAL_WEBHOOK_SECRET = "paypal_whsec_test"
     FX_API_URL = ""

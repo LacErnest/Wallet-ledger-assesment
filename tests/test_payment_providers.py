@@ -6,7 +6,39 @@ import time
 
 from wallet_ledger.infrastructure.payments.base import hmac_sha256_hex
 from wallet_ledger.infrastructure.payments.pawapay_provider import PawaPayProvider
+from wallet_ledger.infrastructure.payments.paypal_provider import PayPalProvider
 from wallet_ledger.infrastructure.payments.stripe_provider import StripeProvider
+
+
+class TestPayPalWebhookVerification:
+    def _provider(self):
+        return PayPalProvider(api_base="x", client_id="", secret="", webhook_secret="s3cr3t")
+
+    def test_valid_signature_is_accepted(self):
+        body = b'{"event_type":"PAYMENT.CAPTURE.COMPLETED"}'
+        assert self._provider().verify_webhook(body, hmac_sha256_hex("s3cr3t", body)) is True
+
+    def test_wrong_signature_is_rejected(self):
+        assert self._provider().verify_webhook(b"{}", "nope") is False
+
+    def test_missing_secret_fails_closed(self):
+        provider = PayPalProvider(api_base="x", client_id="", secret="", webhook_secret="")
+        assert provider.verify_webhook(b"{}", hmac_sha256_hex("x", b"{}")) is False
+
+    def test_callback_parsing(self):
+        result = self._provider().parse_callback(
+            {
+                "event_type": "PAYMENT.CAPTURE.COMPLETED",
+                "resource": {
+                    "custom_id": "txn-9",
+                    "amount": {"value": "150.00", "currency_code": "USD"},
+                },
+            }
+        )
+        assert result.reference == "txn-9"
+        assert result.is_success is True
+        assert str(result.amount) == "150.00"
+        assert result.currency == "USD"
 
 
 class TestStripeWebhookVerification:

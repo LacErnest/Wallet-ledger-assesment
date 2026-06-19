@@ -14,11 +14,11 @@ us *later* whether it worked. The flow (`application/deposits.py`):
    (`deposits.py:71`) posts two balanced ledger entries: **clearing → user**
    (`deposits.py:88-93`), then marks the transaction `SUCCESS`.
 
-### Two providers, one port (Ports & Adapters / Strategy)
+### Three providers, one port (Ports & Adapters / Strategy)
 The deposit service only knows the abstract `PaymentProvider` port
 (`payments/base.py:40`). The concrete adapter is chosen by name in a factory
-(`payments/__init__.py:19`, the Strategy). Adding a provider = one new class + one
-branch, with zero change to the core.
+(`payments/__init__.py`, the Strategy). Adding a provider = one new class + one
+branch, with zero change to the core — PayPal below was added in exactly that way.
 
 - **Stripe** (`stripe_provider.py`) — cards. Amounts in **minor units / cents**
   (`amount * 100`, except zero-decimal currencies, `stripe_provider.py:40`). Webhook
@@ -28,6 +28,12 @@ branch, with zero change to the core.
   **decimal strings** (`pawapay_provider.py:54`), operator mapped to a *correspondent*
   code like `MTN_MOMO_CMR` / `ORANGE_CMR` (`:26`). `depositId` = our transaction id,
   giving **idempotency** on PawaPay's side (`:55`).
+- **PayPal** (`paypal_provider.py`) — Orders API v2; amounts as decimal strings, our
+  transaction id carried in `custom_id` so the capture webhook
+  (`PAYMENT.CAPTURE.COMPLETED`) maps back to our deposit. Same fail-closed verification.
+
+A single endpoint `POST /payments/webhook` also exists (provider read from the body /
+`X-Provider`) for the brief's shape, alongside the per-provider `…/webhook/{provider}`.
 
 ### Two security points you must never skip
 1. **Verify the webhook signature, fail-closed.** `verify_webhook` returns `False` on
@@ -56,10 +62,11 @@ dit *plus tard* si ça a marché. Le flux (`application/deposits.py`) :
    écritures équilibrées : **compensation → utilisateur** (`:88-93`), puis passe la
    transaction à `SUCCESS`.
 
-### Deux fournisseurs, un seul port (Ports & Adaptateurs / Stratégie)
+### Trois fournisseurs, un seul port (Ports & Adaptateurs / Stratégie)
 Le service ne connaît que le port abstrait `PaymentProvider` (`payments/base.py:40`).
-L'adaptateur concret est choisi par nom dans une fabrique (`payments/__init__.py:19`).
-Ajouter un fournisseur = une classe + une branche, sans toucher au cœur.
+L'adaptateur concret est choisi par nom dans une fabrique (`payments/__init__.py`).
+Ajouter un fournisseur = une classe + une branche, sans toucher au cœur — PayPal a été
+ajouté exactement ainsi.
 
 - **Stripe** (`stripe_provider.py`) — cartes. Montants en **sous-unités / centimes**
   (`amount * 100`, `:40`). Webhook signé via l'en-tête `Stripe-Signature` `t=...,v1=...` ;
@@ -68,6 +75,12 @@ Ajouter un fournisseur = une classe + une branche, sans toucher au cœur.
   décimales** (`:54`), opérateur traduit en code *correspondant* `MTN_MOMO_CMR` /
   `ORANGE_CMR` (`:26`). `depositId` = notre id de transaction → **idempotence** côté
   PawaPay (`:55`).
+- **PayPal** (`paypal_provider.py`) — API Orders v2 ; notre id de transaction porté dans
+  `custom_id`, si bien que le webhook de capture (`PAYMENT.CAPTURE.COMPLETED`) se relie à
+  notre dépôt. Même vérification fail-closed.
+
+Un endpoint unique `POST /payments/webhook` existe aussi (fournisseur lu dans le corps /
+`X-Provider`), à côté du `…/webhook/{provider}` par fournisseur.
 
 ### Deux points de sécurité à ne jamais sauter
 1. **Vérifier la signature du webhook, fail-closed.** `verify_webhook` renvoie `False`

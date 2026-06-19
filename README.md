@@ -135,8 +135,9 @@ bounded. Honest takeaway: **cache for latency, snapshot for scale.**
 | POST | `/api/v1/transfers/{id}/commit` | Phase 2 — settle (after risk check) |
 | POST | `/api/v1/transfers/{id}/fail` | Release a reservation |
 | POST | `/api/v1/transactions/{id}/reverse` | Reverse a transaction (compensating entry) |
-| POST | `/api/v1/deposits` | Initiate a deposit (Stripe / PawaPay) |
+| POST | `/api/v1/deposits` | Initiate a deposit (Stripe / PawaPay / PayPal) |
 | POST | `/api/v1/payments/webhook/{provider}` | Provider confirmation (signature-verified) |
+| POST | `/api/v1/payments/webhook` | Same, single endpoint (provider in body / `X-Provider`) |
 | GET | `/api/v1/fx/rate` | Get the exchange rate between two currencies |
 | GET | `/api/v1/fx/convert` | Convert an amount |
 | POST | `/api/v1/fx/transfer` | Cross-currency transfer (via FX pool) |

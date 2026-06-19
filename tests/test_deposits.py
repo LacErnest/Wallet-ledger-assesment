@@ -43,6 +43,12 @@ class TestDeposits:
         service.settle(txn.reference, Decimal("5000"))
         assert LedgerService().balance(account) == Money("5000", "XAF")
 
+    def test_deposit_via_paypal_credits_account(self, alice):
+        service = DepositService()
+        txn = service.initiate(alice.id, Decimal("150"), "paypal")
+        service.settle(txn.reference, Decimal("150"))
+        assert LedgerService().balance(alice) == Money("150", "USD")
+
     def test_confirmed_amount_mismatch_is_rejected(self, alice):
         service = DepositService()
         txn = service.initiate(alice.id, Decimal("100"), "stripe")
